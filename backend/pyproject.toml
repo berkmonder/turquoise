@@ -1,0 +1,29 @@
+[project]
+name = "turquoise-backend"
+version = "0.1.0"
+description = "FastAPI backend for Turquoise Ecosystem"
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi>=0.100.0",
+  "httpx>=0.25.0",
+  "onnxruntime>=1.15.0",
+  "onnxscript>=0.7.1",
+  "pandas>=2.0.0",
+  "psycopg2-binary>=2.9.6",
+  "pydantic-settings>=2.0.0",
+  "python-multipart>=0.0.32",
+  "sqlmodel>=0.0.14",
+  "torch>=2.13.0",
+  "torchvision>=0.28.0",
+  "uvicorn>=0.22.0",
+]
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]
+
+[tool.ty.src]
+exclude = ["models/generate_onnx.py"]

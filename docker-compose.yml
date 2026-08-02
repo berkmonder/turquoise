@@ -1,0 +1,33 @@
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: turquoise-db
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: secret123
+      POSTGRES_DB: mvp_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  backend:
+    build: ./backend
+    container_name: turquoise-backend
+    restart: always
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://postgres:secret123@db:5432/mvp_db
+      - FRONTEND_URL=http://localhost:8081
+      - MASTER_API_KEY=sk_turquoise_prod_placeholder_token
+    volumes:
+      - ./backend:/app
+      - model_storage:/app/models
+    depends_on:
+      - db
+
+volumes:
+  postgres_data:
+  model_storage:
