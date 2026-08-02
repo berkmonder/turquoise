@@ -138,6 +138,16 @@ class UniversalExecutionRequest(BaseModel):
 class WishlistRequest(BaseModel):
     email: str
 
+class VerifyKeyRequest(BaseModel):
+    apiKey: str
+
+@app.post("/api/auth/verify")
+def verify_developer_key(req: VerifyKeyRequest):
+    """Verifies developer key against server environment variable."""
+    if req.apiKey != settings.MASTER_API_KEY:
+        raise HTTPException(status_code=401, detail="Invalid master secret key.")
+    return {"status": "authenticated", "message": "Key verified successfully."}
+
 @app.get("/api/v1/models", response_model=List[ModelTable])
 def list_ecosystem_models():
     with Session(engine) as session:

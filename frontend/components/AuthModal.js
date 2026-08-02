@@ -1,4 +1,3 @@
-// frontend/components/AuthModal.js
 import React, { useState } from 'react';
 import {
     View,
@@ -10,8 +9,7 @@ import {
     StyleSheet,
 } from 'react-native';
 
-const API_BASE = 'http://localhost:8000';
-const MASTER_KEY = 'sk_turquoise_prod_placeholder_token';
+const API_BASE = process.env.API_BASE || 'http://localhost:8000';
 
 export default function AuthModal({ visible, onClose, onLoginSuccess, theme }) {
     const [activeTab, setActiveTab] = useState('login'); // 'login' | 'wishlist'
@@ -25,20 +23,32 @@ export default function AuthModal({ visible, onClose, onLoginSuccess, theme }) {
     const isDark = theme === 'dark';
     const themeStyles = isDark ? darkStyles : lightStyles;
 
-    const handleLogin = () => {
+    const handleLogin = async () => {
         setMsg(null);
         if (!apiKey.trim()) {
             setMsg('Please enter your secret access key.');
             setIsSuccess(false);
             return;
         }
-        if (apiKey.trim() === MASTER_KEY) {
-            onLoginSuccess();
+        try {
+            setLoading(true);
+            const res = await fetch(`${API_BASE}/api/auth/verify`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ apiKey: apiKey.trim() }),
+            });
+
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.detail || 'Authentication failed');
+
+            onLoginSuccess(apiKey.trim());
             onClose();
             resetForm();
-        } else {
-            setMsg('Invalid developer access token.');
+        } catch (err) {
             setIsSuccess(false);
+            setMsg(err.message);
+        } finally {
+            setLoading(false);
         }
     };
 

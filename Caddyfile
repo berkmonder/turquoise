@@ -1,4 +1,0 @@
-store.berkmonder.com {
-    reverse_proxy /api/* localhost:8000
-    reverse_proxy localhost:8081
-}
