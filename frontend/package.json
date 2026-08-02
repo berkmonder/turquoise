@@ -13,8 +13,7 @@
     "serve": "^14.2.4"
   },
   "scripts": {
-    "start": "serve dist -s -p 8081",
-    "dev": "expo start",
+    "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
