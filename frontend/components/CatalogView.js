@@ -11,11 +11,14 @@ import {
   StyleSheet,
 } from 'react-native';
 
-const API_BASE = typeof window !== 'undefined' && window.location.hostname !== 'localhost'
-  ? `http://${window.location.hostname}:8000`
-  : 'http://localhost:8000';
+const API_BASE = process.env.API_BASE || '';
 
-const DEV_BEARER_TOKEN = 'sk_turquoise_prod_placeholder_token';
+const getAuthToken = () => {
+  if (typeof window !== 'undefined') {
+    return localStorage.getItem('turquoise_master_key') || '';
+  }
+  return '';
+};
 
 export default function CatalogView({ onSelectModel, theme, isDevMode }) {
   const [models, setModels] = useState([]);
@@ -72,7 +75,7 @@ export default function CatalogView({ onSelectModel, theme, isDevMode }) {
       const res = await fetch(`${API_BASE}/api/v1/models/${modelId}`, {
         method: 'DELETE',
         headers: {
-          'Authorization': `Bearer ${DEV_BEARER_TOKEN}`,
+          'Authorization': `Bearer ${getAuthToken()}`,
         },
       });
 

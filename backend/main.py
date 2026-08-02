@@ -27,7 +27,7 @@ class Settings(BaseSettings):
     MASTER_API_KEY: str = "sk_turquoise_prod_placeholder_token"
 
     model_config = SettingsConfigDict(
-        env_file=(".env", ".env.local", "../.env.local"),
+        env_file=".env",
         env_file_encoding="utf-8",
         extra="ignore"
     )

@@ -24,31 +24,24 @@ export default function AuthModal({ visible, onClose, onLoginSuccess, theme }) {
     const themeStyles = isDark ? darkStyles : lightStyles;
 
     const handleLogin = async () => {
-        setMsg(null);
-        if (!apiKey.trim()) {
-            setMsg('Please enter your secret access key.');
-            setIsSuccess(false);
-            return;
-        }
         try {
-            setLoading(true);
             const res = await fetch(`${API_BASE}/api/auth/verify`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ apiKey: apiKey.trim() }),
+                body: JSON.stringify({ apiKey }),
             });
 
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.detail || 'Authentication failed');
+            if (!res.ok) {
+                const errData = await res.json();
+                throw new Error(errData.detail || 'Authentication failed');
+            }
 
-            onLoginSuccess(apiKey.trim());
+            localStorage.setItem('turquoise_master_key', apiKey);
+
+            setIsDevMode(true);
             onClose();
-            resetForm();
         } catch (err) {
-            setIsSuccess(false);
-            setMsg(err.message);
-        } finally {
-            setLoading(false);
+            alert(`Login failed: ${err.message}`);
         }
     };
 
