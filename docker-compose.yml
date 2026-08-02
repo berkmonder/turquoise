@@ -14,8 +14,8 @@ services:
     build: ./backend
     container_name: turquoise-backend
     restart: always
-    ports:
-      - "8000:8000"
+    expose:
+      - "8000"
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
       - FRONTEND_URL=${FRONTEND_URL}

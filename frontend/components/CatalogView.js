@@ -11,7 +11,7 @@ import {
   StyleSheet,
 } from 'react-native';
 
-const API_BASE = process.env.API_BASE || '';
+const API_BASE = process.env.EXPO_PUBLIC_API_BASE || process.env.API_BASE || '';
 
 const getAuthToken = () => {
   if (typeof window !== 'undefined') {
@@ -117,7 +117,7 @@ export default function CatalogView({ onSelectModel, theme, isDevMode }) {
       const res = await fetch(`${API_BASE}/api/v1/models/publish`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${DEV_BEARER_TOKEN}`,
+          'Authorization': `Bearer ${getAuthToken()}`,
         },
         body: formData,
       });

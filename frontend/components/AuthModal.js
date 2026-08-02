@@ -9,7 +9,7 @@ import {
     StyleSheet,
 } from 'react-native';
 
-const API_BASE = process.env.API_BASE || 'http://localhost:8000';
+const API_BASE = process.env.EXPO_PUBLIC_API_BASE || process.env.API_BASE || '';
 
 export default function AuthModal({ visible, onClose, onLoginSuccess, theme }) {
     const [activeTab, setActiveTab] = useState('login'); // 'login' | 'wishlist'
@@ -38,7 +38,7 @@ export default function AuthModal({ visible, onClose, onLoginSuccess, theme }) {
 
             localStorage.setItem('turquoise_master_key', apiKey);
 
-            setIsDevMode(true);
+            onLoginSuccess();
             onClose();
         } catch (err) {
             alert(`Login failed: ${err.message}`);

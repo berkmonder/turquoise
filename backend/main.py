@@ -91,19 +91,33 @@ def verify_api_access(authorization: Optional[str] = Header(None)) -> str:
 async def monitor_compute_nodes():
     while True:
         await asyncio.sleep(30)
-        with Session(engine) as session:
-            models = session.exec(select(ModelTable)).all()
-            async with httpx.AsyncClient(timeout=3.0) as client:
-                for model in models:
-                    if model.execution_type == "local_onnx":
-                        model.node_status = "online"
-                        continue
-                    try:
-                        response = await client.get(f"{model.worker_url}/health")
-                        model.node_status = "online" if response.status_code == 200 else "offline"
-                    except Exception:
-                        model.node_status = "offline"
-            session.commit()
+        
+        def _get_models():
+            with Session(engine) as session:
+                return session.exec(select(ModelTable)).all()
+                
+        models = await asyncio.to_thread(_get_models)
+        
+        async with httpx.AsyncClient(timeout=3.0) as client:
+            for model in models:
+                if model.execution_type == "local_onnx":
+                    model.node_status = "online"
+                    continue
+                try:
+                    response = await client.get(f"{model.worker_url}/health")
+                    model.node_status = "online" if response.status_code == 200 else "offline"
+                except Exception:
+                    model.node_status = "offline"
+                    
+        def _update_models():
+            with Session(engine) as session:
+                for m in models:
+                    db_model = session.get(ModelTable, m.id)
+                    if db_model:
+                        db_model.node_status = m.node_status
+                session.commit()
+                
+        await asyncio.to_thread(_update_models)
 
 def init_db():
     os.makedirs(settings.MODEL_DIR, exist_ok=True)
@@ -185,35 +199,41 @@ async def publish_model(
     norm_input = INPUT_TYPE_MAP.get(input_type, "tabular_csv")
     norm_output = OUTPUT_TYPE_MAP.get(output_type, "numeric_array")
 
-    with Session(engine) as session:
-        existing = session.get(ModelTable, id)
-        if existing:
-            raise HTTPException(status_code=400, detail=f"Model ID '{id}' is already registered.")
+    content = None
+    if execution_type == "local_onnx":
+        if not upload_file:
+            raise HTTPException(status_code=400, detail="Local ONNX execution requires an attached .onnx file.")
+        content = await upload_file.read()
 
-        if execution_type == "local_onnx":
-            if not upload_file:
-                raise HTTPException(status_code=400, detail="Local ONNX execution requires an attached .onnx file.")
-            file_path = os.path.join(settings.MODEL_DIR, f"{id}.onnx")
-            content = await upload_file.read()
-            with open(file_path, "wb") as f:
-                f.write(content)
+    def _process_publish():
+        with Session(engine) as session:
+            existing = session.get(ModelTable, id)
+            if existing:
+                raise HTTPException(status_code=400, detail=f"Model ID '{id}' is already registered.")
 
-        new_model = ModelTable(
-            id=id,
-            name=name,
-            description=description,
-            owner_id=caller,
-            category=category,
-            execution_type=execution_type,
-            input_type=norm_input,
-            output_type=norm_output,
-            worker_url=worker_url,
-            node_status="online" if execution_type == "local_onnx" else "offline"
-        )
-        session.add(new_model)
-        session.commit()
-        session.refresh(new_model)
-        return new_model
+            if execution_type == "local_onnx" and content:
+                file_path = os.path.join(settings.MODEL_DIR, f"{id}.onnx")
+                with open(file_path, "wb") as f:
+                    f.write(content)
+
+            new_model = ModelTable(
+                id=id,
+                name=name,
+                description=description,
+                owner_id=caller,
+                category=category,
+                execution_type=execution_type,
+                input_type=norm_input,
+                output_type=norm_output,
+                worker_url=worker_url,
+                node_status="online" if execution_type == "local_onnx" else "offline"
+            )
+            session.add(new_model)
+            session.commit()
+            session.refresh(new_model)
+            return new_model
+
+    return await asyncio.to_thread(_process_publish)
 
 @app.get("/api/v1/download/{model_id}")
 def download_model_file(model_id: str):
@@ -225,12 +245,15 @@ def download_model_file(model_id: str):
 # Agnostic Execution Pipeline with LLM Streaming
 @app.post("/api/v1/execute/{model_id}")
 async def execute_model_inference(model_id: str, request: UniversalExecutionRequest):
-    with Session(engine) as session:
-        model = session.get(ModelTable, model_id)
-        if not model:
-            raise HTTPException(status_code=404, detail="Target model mapping unavailable.")
-        if model.node_status == "offline":
-            raise HTTPException(status_code=503, detail="Target computing node cluster is currently offline.")
+    def _get_model():
+        with Session(engine) as session:
+            return session.get(ModelTable, model_id)
+            
+    model = await asyncio.to_thread(_get_model)
+    if not model:
+        raise HTTPException(status_code=404, detail="Target model mapping unavailable.")
+    if model.node_status == "offline":
+        raise HTTPException(status_code=503, detail="Target computing node cluster is currently offline.")
 
     # 1. OpenAI Compatible Remote LLM Stream (e.g. llama-server)
     if model.execution_type == "openai_proxy":
@@ -280,38 +303,41 @@ async def execute_model_inference(model_id: str, request: UniversalExecutionRequ
         if not os.path.exists(model_path):
             raise HTTPException(status_code=404, detail=f"ONNX asset file '{model_id}.onnx' missing from server storage.")
         
-        try:
-            ort_session = ort.InferenceSession(model_path)
-            input_info = ort_session.get_inputs()[0]
-            input_name = input_info.name
-            expected_shape = input_info.shape
+        def _run_onnx():
+            try:
+                ort_session = ort.InferenceSession(model_path)
+                input_info = ort_session.get_inputs()[0]
+                input_name = input_info.name
+                expected_shape = input_info.shape
 
-            if isinstance(request.payload, str) and model.input_type == "tabular_csv":
-                df = pd.read_csv(io.StringIO(request.payload.strip()), header=None)
-                try:
-                    float(df.iloc[0, 0])
-                except ValueError:
-                    df = pd.read_csv(io.StringIO(request.payload.strip()))
-                raw_matrix = df.to_numpy(dtype=np.float32)
-            else:
-                raw_matrix = np.array(request.payload, dtype=np.float32)
+                if isinstance(request.payload, str) and model.input_type == "tabular_csv":
+                    df = pd.read_csv(io.StringIO(request.payload.strip()), header=None)
+                    try:
+                        float(df.iloc[0, 0])
+                    except ValueError:
+                        df = pd.read_csv(io.StringIO(request.payload.strip()))
+                    raw_matrix = df.to_numpy(dtype=np.float32)
+                else:
+                    raw_matrix = np.array(request.payload, dtype=np.float32)
 
-            if len(expected_shape) == 2:
-                tensor_input = raw_matrix.reshape(1, -1) if raw_matrix.ndim != 2 else raw_matrix
-            elif len(expected_shape) == 4:
-                tensor_input = raw_matrix.reshape(1, 1, 28, 28) if raw_matrix.ndim != 4 else raw_matrix
-            else:
-                tensor_input = raw_matrix
+                if len(expected_shape) == 2:
+                    tensor_input = raw_matrix.reshape(1, -1) if raw_matrix.ndim != 2 else raw_matrix
+                elif len(expected_shape) == 4:
+                    tensor_input = raw_matrix.reshape(1, 1, 28, 28) if raw_matrix.ndim != 4 else raw_matrix
+                else:
+                    tensor_input = raw_matrix
 
-            execution_outputs: Any = ort_session.run(None, {input_name: tensor_input})
-            raw_predictions = execution_outputs[0]
+                execution_outputs = ort_session.run(None, {input_name: tensor_input})
+                raw_predictions = execution_outputs[0]
 
-            if model.output_type == "classification_label":
-                output_data = int(np.argmax(raw_predictions[0]))
-            else:
-                output_data = getattr(raw_predictions, "tolist")()
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Local ONNX runtime execution crash: {str(e)}")
+                if model.output_type == "classification_label":
+                    return int(np.argmax(raw_predictions[0]))
+                else:
+                    return getattr(raw_predictions, "tolist")()
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=f"Local ONNX runtime execution crash: {str(e)}")
+
+        output_data = await asyncio.to_thread(_run_onnx)
 
         return {"model_id": model_id, "timestamp": time.time(), "output": output_data}
 

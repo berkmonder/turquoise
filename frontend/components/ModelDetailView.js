@@ -11,7 +11,7 @@ import {
   StyleSheet,
 } from 'react-native';
 
-const API_BASE = 'http://localhost:8000';
+const API_BASE = process.env.EXPO_PUBLIC_API_BASE || process.env.API_BASE || '';
 
 function ImageCanvasInput({ onPixelDataChange, disabled, isDark }) {
   const canvasRef = useRef(null);
