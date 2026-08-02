@@ -17,18 +17,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from sqlalchemy import URL
 from sqlalchemy.exc import OperationalError
 from sqlmodel import Field, Session, SQLModel, create_engine, select
 
 class Settings(BaseSettings):
-    POSTGRES_USER: str = "postgres"
-    POSTGRES_PASSWORD: str = "secret123"
-    POSTGRES_DB: str = "mvp_db"
-    POSTGRES_HOST: str = "db"
-    POSTGRES_PORT: int = 5432
-    DATABASE_URL: Optional[str] = None
-    
+    DATABASE_URL: str = "postgresql://postgres:secret123@db:5432/mvp_db"
     FRONTEND_URL: str = "http://localhost:8081"
     MODEL_DIR: str = "/app/models"
     MASTER_API_KEY: str = "sk_turquoise_prod_placeholder_token"
@@ -39,21 +32,8 @@ class Settings(BaseSettings):
         extra="ignore"
     )
 
-    @property
-    def get_db_url(self) -> str:
-        if self.DATABASE_URL:
-            return self.DATABASE_URL
-        return str(URL.create(
-            drivername="postgresql",
-            username=self.POSTGRES_USER,
-            password=self.POSTGRES_PASSWORD,
-            host=self.POSTGRES_HOST,
-            port=self.POSTGRES_PORT,
-            database=self.POSTGRES_DB
-        ))
-
 settings = Settings()
-engine = create_engine(settings.get_db_url, echo=False)
+engine = create_engine(settings.DATABASE_URL, echo=False)
 
 # String normalization maps for developer flexibility
 INPUT_TYPE_MAP = {
