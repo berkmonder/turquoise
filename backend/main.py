@@ -120,13 +120,26 @@ async def monitor_compute_nodes():
         await asyncio.to_thread(_update_models)
 
 def init_db():
+    """Initialize database: create model directory and run migrations."""
     os.makedirs(settings.MODEL_DIR, exist_ok=True)
-    for i in range(10):
-        try:
-            SQLModel.metadata.create_all(engine)
-            break
-        except OperationalError:
-            time.sleep(2)
+    run_migrations()
+
+def run_migrations():
+    """Run all pending SQL migrations."""
+    from pathlib import Path
+    from psycopg2 import sql, OperationalError, sqlerrors
+    from psycopg2.extensions import adapt
+    import sys
+    
+    sys.path.insert(0, str(Path(__file__).parent))
+    from migrations import run_migrations as _run_migrations
+    try:
+        _run_migrations(engine)
+    except OperationalError as e:
+        print(f"⚠ Database not yet available: {e}", file=sys.stderr)
+        print("  Retrying in 2 seconds...")
+        time.sleep(2)
+        _run_migrations(engine)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
