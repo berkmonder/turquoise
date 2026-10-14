@@ -13,9 +13,15 @@ dependencies = [
   "pydantic-settings>=2.0.0",
   "python-multipart>=0.0.32",
   "sqlmodel>=0.0.14",
+  "uvicorn>=0.22.0",
+]
+
+[dependency-groups]
+# Only for models/generate_mnist.py (trains the demo model and exports mnist.onnx); the API runs
+# models with onnxruntime, so the image leaves these out: uv run --group train models/generate_mnist.py
+train = [
   "torch>=2.13.0",
   "torchvision>=0.28.0",
-  "uvicorn>=0.22.0",
 ]
 
 [tool.ruff]
