@@ -1,0 +1,61 @@
+# The API (backend/): on pushes and pull requests, ruff and ty must pass; on main, its image is then
+# built, started against a throwaway Postgres (it must answer /api/v1/models, as on the server) and
+# pushed to the VPS's registry over Tailscale. The VPS runs it within ~2 minutes and goes back to the
+# previous image if it doesn't get healthy there (nix-dotfiles: hosts/vps/apps.nix).
+name: api
+on:
+  push:
+    branches: [main]
+    paths: [backend/**, .github/workflows/api.yml]
+  pull_request:
+    paths: [backend/**, .github/workflows/api.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+  id-token: write # Tailscale accepts this run's GitHub identity: no secret is stored here
+env:
+  IMAGE: turquoise
+  REGISTRY: 100.75.141.94:5000 # the VPS, over Tailscale
+jobs:
+  checks:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v10.2.0
+      - run: uv sync --frozen
+      - name: ruff
+        run: uvx ruff@0.16.9 check .
+      - name: ty
+        run: uvx ty@0.0.84 check .
+  deploy:
+    needs: checks
+    if: github.event_name != 'pull_request'
+    concurrency:
+      group: deploy-api
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Build
+        run: podman build --label org.opencontainers.image.revision=${{ github.sha }} -t "$IMAGE" backend
+      - name: Start it with a database and check it answers
+        run: |
+          podman network create smoke
+          podman run -d --network smoke --name db -e POSTGRES_PASSWORD=smoke -e POSTGRES_DB=turquoise docker.io/library/postgres:17-alpine
+          podman run -d --network smoke --name smoke -e DATABASE_URL=postgresql://postgres:smoke@db:5432/turquoise -e MASTER_API_KEY=smoke "$IMAGE"
+          for _ in $(seq 60); do
+            podman exec smoke python -c "import urllib.request as u; u.urlopen('http://127.0.0.1:8000/api/v1/models', timeout=5)" && exit 0
+            sleep 2
+          done
+          podman logs smoke
+          exit 1
+      - name: Join the tailnet
+        uses: tailscale/github-action@v4.2.0
+        with:
+          oauth-client-id: ${{ vars.TS_CLIENT_ID }}
+          audience: ${{ vars.TS_AUDIENCE }}
+          tags: tag:ci
+      - name: Push to the VPS
+        run: podman push --tls-verify=false "$IMAGE" "docker://$REGISTRY/$IMAGE:latest"

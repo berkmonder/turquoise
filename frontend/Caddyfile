@@ -1,0 +1,7 @@
+# Serves the built web app; paths that are not files get index.html (the app routes them itself).
+# HTTPS, compression and the domain are the server's front Caddy's job.
+:80 {
+	root * /srv
+	try_files {path} /index.html
+	file_server
+}
