@@ -1,0 +1,22 @@
+# Turquoise's API. The sentence-embedding model (the chat's fallback search) is downloaded at build
+# time, so the server never needs the internet to start.
+FROM docker.io/library/python:3.12-slim
+
+COPY --from=ghcr.io/astral-sh/uv:0.8.22 /uv /bin/uv
+
+WORKDIR /app
+ENV UV_PROJECT_ENVIRONMENT=/opt/venv \
+    UV_COMPILE_BYTECODE=1 \
+    PATH=/opt/venv/bin:$PATH \
+    FASTEMBED_CACHE_PATH=/opt/fastembed \
+    PYTHONUNBUFFERED=1
+
+COPY pyproject.toml uv.lock ./
+RUN uv sync --frozen --no-dev --no-install-project
+RUN python -c "from fastembed import TextEmbedding; TextEmbedding('BAAI/bge-small-en-v1.5')"
+
+COPY app ./app
+COPY profile ./profile
+
+EXPOSE 8000
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

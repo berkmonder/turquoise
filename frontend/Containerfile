@@ -1,5 +1,5 @@
-# The turquoise web app as an image: the Expo web export (Node 22, as before), served by Caddy as a
-# single-page app. Its API is a separate image (backend/Dockerfile); the server routes /api there.
+# The turquoise web app as an image: built with Vite (React + TypeScript), served by Caddy as a
+# single-page app. Its API is a separate image (backend/Containerfile); the server routes /api there.
 FROM docker.io/library/node:22.23.2-bookworm-slim AS build
 WORKDIR /src
 COPY package.json package-lock.json ./

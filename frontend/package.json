@@ -1,22 +1,24 @@
 {
-  "name": "frontend",
-  "version": "1.0.0",
-  "main": "index.js",
-  "dependencies": {
-    "@expo/metro-runtime": "~57.0.6",
-    "expo": "~57.0.7",
-    "expo-status-bar": "~57.0.1",
-    "react": "19.2.3",
-    "react-dom": "19.2.3",
-    "react-native": "0.86.0",
-    "react-native-web": "^0.21.2"
-  },
+  "name": "turquoise-web",
+  "private": true,
+  "version": "2.0.0",
+  "type": "module",
   "scripts": {
-    "start": "expo start",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
-    "web": "expo start --web",
-    "build": "EXPO_PUBLIC_API_BASE=$API_BASE npx expo export"
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview"
   },
-  "private": true
+  "dependencies": {
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "react-markdown": "^10.1.0",
+    "react-router-dom": "^7.6.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "@vitejs/plugin-react": "^4.6.0",
+    "typescript": "~5.8.3",
+    "vite": "^7.0.0"
+  }
 }
