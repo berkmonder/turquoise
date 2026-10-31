@@ -34,6 +34,9 @@ export function Anomaly() {
   const [source, setSource] = useState<string>("");
   const [toast, setToast] = useState<{ text: string; kind: string } | null>(null);
   const [mine, setMine] = useState<Set<number>>(new Set());
+  const mineRef = useRef(new Set<number>());
+  const waiting = useRef(new Set<number>()); // my points still in the future
+  const toastTimer = useRef(0);
   const [panel, togglePanel] = usePanel();
   const live = useLive(["anomaly"]);
 
@@ -62,23 +65,40 @@ export function Anomaly() {
       setSource(e.source);
     } else if (e.type === "detection") {
       d.detections = [...d.detections.filter((x) => x.id !== e.id), e].slice(-150);
+      if (e.label !== "pending" && mineRef.current.has(e.id) && waiting.current.has(e.id)) {
+        waiting.current.delete(e.id);
+        verdict(e);
+      }
     }
   });
+
+  function show(text: string, kind: string) {
+    setToast({ text, kind });
+    window.clearTimeout(toastTimer.current);
+    toastTimer.current = window.setTimeout(() => setToast(null), 3500);
+  }
+
+  function verdict(d: Detection) {
+    const away = Math.abs(d.z ?? 0).toFixed(1);
+    if (d.label === "anomaly") show(`Anomaly: ${away}σ from what the model expected`, "anomaly");
+    else show(`Normal: ${away}σ from the expected value`, "normal");
+  }
 
   async function add(t: number, y: number) {
     try {
       const d = await postJson<Detection>("/api/anomaly/points", { t, y });
-      setMine((m) => new Set(m).add(d.id));
-      const away = Math.abs(d.z).toFixed(1);
-      setToast(
-        d.label === "anomaly"
-          ? { text: `Anomaly: ${away}σ from what the model expected`, kind: "anomaly" }
-          : { text: `Normal: ${away}σ from the expected value`, kind: "normal" },
-      );
+      mineRef.current.add(d.id);
+      setMine(new Set(mineRef.current));
+      if (d.label === "pending") {
+        waiting.current.add(d.id);
+        const lastT = data.current?.points.at(-1)?.[0] ?? t;
+        show(`Waiting: judged when that moment comes, in ${Math.max(1, Math.round(t - lastT))} s`, "pending");
+      } else {
+        verdict(d);
+      }
     } catch (e) {
-      setToast({ text: e instanceof Error ? e.message : "Couldn't add that point.", kind: "error" });
+      show(e instanceof Error ? e.message : "Couldn't add that point.", "error");
     }
-    window.setTimeout(() => setToast(null), 3500);
   }
 
   const forecaster = live.status?.gpu.forecaster;
@@ -94,7 +114,8 @@ export function Anomaly() {
             <p className="muted">
               A signal streams in, four points a second. Every second a model forecasts the next 16 seconds with a band of
               what's normal. <strong>Click anywhere on the chart</strong> to add a point: inside the band it's normal,
-              outside it's an anomaly. Everyone watching sees your points too.
+              outside it's an anomaly. A point in the forecast zone waits until its moment comes, then is
+              judged. Everyone watching sees your points too.
             </p>
           </div>
           <div className="head-actions">
@@ -118,6 +139,7 @@ export function Anomaly() {
           <span><i className="sw band-fallback" /> band by robust AR (fallback, CPU)</span>
           <span><i className="sw normal" /> normal point</span>
           <span><i className="sw anomaly" /> anomaly, with its distance in σ</span>
+          <span><i className="sw pending" /> waiting for its moment</span>
         </div>
         <p className="muted small">
           Forecasting now:{" "}

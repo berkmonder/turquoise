@@ -55,13 +55,24 @@ def test_points_are_judged_against_the_band():
 
         demo = routes.demo
         assert demo is not None
-        step = max(demo.bands)
-        band = demo.bands[step]
-        normal = client.post("/api/anomaly/points", json={"t": step * 0.25, "y": band.expected})
+        past = max(s for s in demo.bands if s <= demo.step)
+        band = demo.bands[past]
+        normal = client.post("/api/anomaly/points", json={"t": past * 0.25, "y": band.expected})
         odd = client.post("/api/anomaly/points",
-                          json={"t": step * 0.25, "y": band.expected + 10 * band.sigma})
+                          json={"t": past * 0.25, "y": band.expected + 10 * band.sigma})
         assert normal.json()["label"] == "normal"
         assert odd.json()["label"] == "anomaly"
+
+        # A point in the future waits for its moment, then is judged against that moment's last band.
+        future = max(demo.bands)
+        waiting = client.post("/api/anomaly/points",
+                              json={"t": future * 0.25, "y": demo.bands[future].expected})
+        assert waiting.json()["label"] == "pending"
+        point_id = waiting.json()["id"]
+        demo.step = future
+        demo.judge_due()
+        assert point_id not in demo.pending
+        assert [d["label"] for d in demo.detections if d["id"] == point_id] == ["normal"]
         off_chart = client.post("/api/anomaly/points", json={"t": 1.0, "y": 0.0})
         assert off_chart.status_code == 422
 

@@ -159,6 +159,7 @@ main { max-width: 1320px; margin: 0 auto; padding: 28px 24px 60px; }
 .det circle { stroke: #0b1117; stroke-width: 2; }
 .det.normal circle { fill: var(--live); }
 .det.anomaly circle { fill: var(--bad); }
+.det.pending circle { fill: transparent; stroke: #cbd5e1; stroke-width: 2; stroke-dasharray: 3 2; }
 .det.mine circle { stroke: #fff; stroke-width: 2.4; }
 .det text { fill: var(--bad); font-size: 12px; font-weight: 700; }
 .det-gap { stroke: rgba(248, 113, 113, 0.35); stroke-dasharray: 2 2; }
@@ -174,6 +175,8 @@ main { max-width: 1320px; margin: 0 auto; padding: 28px 24px 60px; }
 .sw.band-fallback { background: rgba(56, 189, 248, 0.4); }
 .sw.normal { background: var(--live); border-radius: 50%; width: 10px; }
 .sw.anomaly { background: var(--bad); border-radius: 50%; width: 10px; }
+.sw.pending { border: 2px dashed #cbd5e1; border-radius: 50%; width: 10px; height: 10px; background: transparent; }
+.toast.pending { color: #cbd5e1; }
 
 /* -- API page -- */
 .api-page { max-width: 860px; }

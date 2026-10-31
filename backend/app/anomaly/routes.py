@@ -50,7 +50,7 @@ async def add_point(point: Point, request: Request) -> dict[str, Any]:
         raise HTTPException(429, "That's a lot of points: wait a minute.",
                             headers={"Retry-After": str(state.point_limit.retry_after(who))})
     try:
-        return demo.judge(point.t, point.y)
+        return demo.add(point.t, point.y)
     except ValueError as error:
         raise HTTPException(422, str(error)) from error
 

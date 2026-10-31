@@ -71,8 +71,9 @@ site (the "GPU online / offline" pill) and in the pipeline panel.
   outliers barely count), whose band is the wider of its theoretical spread and the errors it really
   made forecasting its own recent past. Each moment keeps the last forecast made before it.
 - **Detection:** a visitor's point is scored against the band the model had for that moment:
-  z = (value − expected) / σ, an anomaly beyond 3σ. σ never drops below a click's precision. Only
-  visitors' points are judged, never the generated signal.
+  z = (value − expected) / σ, an anomaly beyond 3σ. σ never drops below a click's precision. A point
+  placed in the forecast zone waits (shown hollow) until its moment comes, then is judged against the
+  last band drawn before it. Only visitors' points are judged, never the generated signal.
 - **For anyone's data** (`POST /api/v1/anomaly/detect`): each point is compared with a forecast made
   from the points before it (64 points of warm-up). On the GPU all windows go to Chronos-Bolt in one
   batch; on the CPU the series is processed in order and each anomaly is clipped to the band's edge in

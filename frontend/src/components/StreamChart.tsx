@@ -8,10 +8,10 @@ export type Detection = {
   id: number;
   t: number;
   y: number;
-  z: number;
-  label: "normal" | "anomaly";
-  expected: number;
-  source: string;
+  label: "normal" | "anomaly" | "pending"; // pending: placed in the future, judged when its moment comes
+  z?: number;
+  expected?: number;
+  source?: string;
 };
 
 export type StreamState = {
@@ -114,9 +114,9 @@ export function StreamChart(props: { data: StreamState; mine: Set<number>; onPoi
         .filter((d) => d.t >= t0 && d.t <= t1)
         .map((d) => (
           <g key={d.id} className={`det ${d.label}${mine.has(d.id) ? " mine" : ""}`}>
-            <line className="det-gap" x1={x(d.t)} x2={x(d.t)} y1={y(d.y)} y2={y(d.expected)} />
+            {d.expected !== undefined && <line className="det-gap" x1={x(d.t)} x2={x(d.t)} y1={y(d.y)} y2={y(d.expected)} />}
             <circle cx={x(d.t)} cy={y(Math.max(Y_MIN, Math.min(Y_MAX, d.y)))} r={mine.has(d.id) ? 7 : 5.5} />
-            {d.label === "anomaly" && (
+            {d.label === "anomaly" && d.z !== undefined && (
               <text x={x(d.t) + 9} y={y(Math.max(Y_MIN, Math.min(Y_MAX, d.y))) - 8}>
                 {Math.abs(d.z).toFixed(1)}σ
               </text>

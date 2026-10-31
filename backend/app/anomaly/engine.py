@@ -1,7 +1,8 @@
 """The live anomaly demo. A smooth signal that never repeats is generated, four points a second; every
 second a model forecasts the next 16 seconds with a band of what's normal. Visitors add points anywhere
 on the chart: each one is judged against the band the model had for that moment, and everyone watching
-sees the verdict. Only visitors' points are judged, never the generated signal."""
+sees the verdict. A point placed in the future waits until its moment comes, then is judged against the
+last band the model drew for that moment. Only visitors' points are judged, never the generated signal."""
 
 import asyncio
 import itertools
@@ -61,6 +62,7 @@ class AnomalyDemo:
         self.points: deque[tuple[int, float]] = deque(maxlen=int(600 / DT))  # (step, value)
         self.bands: dict[int, Band] = {}  # step → the latest forecast made before it
         self.detections: deque[dict[str, Any]] = deque(maxlen=100)
+        self.pending: dict[int, dict[str, Any]] = {}  # id → a point in the future, until its moment comes
         self.feed = Hub()  # the chart's own stream (points, bands, verdicts): /api/anomaly/stream
         self._ids = itertools.count(1)
         self.step = int(time.time() / DT)
@@ -79,6 +81,7 @@ class AnomalyDemo:
             value = self.signal.value(self.step * DT)
             self.points.append((self.step, value))
             self.feed.publish({"type": "point", "t": self.step * DT, "y": round(value, 4)})
+            self.judge_due()
 
     async def _forecast_every_second(self) -> None:
         while True:
@@ -111,16 +114,39 @@ class AnomalyDemo:
                      "threshold": THRESHOLD})
 
     # -- visitors' points --------------------------------------------------------------------------
-    def judge(self, t: float, y: float) -> dict[str, Any]:
-        """Score a visitor's point against the band for its moment. Raises ValueError off the chart."""
+    def add(self, t: float, y: float) -> dict[str, Any]:
+        """A visitor's point: judged now if its moment has passed, otherwise kept until it does. Raises
+        ValueError off the chart, or when too many points are already waiting."""
         step = round(t / DT)
-        band = self.bands.get(step)
-        if band is None or step < self.step - int(VISIBLE / DT):
+        if step not in self.bands or step < self.step - int(VISIBLE / DT):
             raise ValueError("That moment isn't on the chart.")
+        point_id = next(self._ids)
+        if step <= self.step:
+            return self._judge(point_id, step, y)
+        if len(self.pending) >= 200:
+            raise ValueError("Many points are already waiting: try one in the past.")
+        point = {"type": "detection", "id": point_id, "t": step * DT, "y": y, "label": "pending"}
+        self.pending[point_id] = point
+        Trace("anomaly").stage("detect", status="waiting")
+        self.feed.publish(dict(point))
+        return point
+
+    def judge_due(self) -> None:
+        """Judge the waiting points whose moment has come."""
+        for point_id, point in list(self.pending.items()):
+            step = round(point["t"] / DT)
+            if step <= self.step:
+                del self.pending[point_id]
+                if step in self.bands:
+                    self._judge(point_id, step, point["y"])
+
+    def _judge(self, point_id: int, step: int, y: float) -> dict[str, Any]:
+        """Score a point against the last band the model drew for its moment, before it came."""
+        band = self.bands[step]
         trace = Trace("anomaly")
         trace.stage("detect")
         z = (y - band.expected) / band.sigma
-        detection = {"type": "detection", "id": next(self._ids),
+        detection = {"type": "detection", "id": point_id,
                      "t": step * DT, "y": y, "expected": round(band.expected, 4),
                      "sigma": round(band.sigma, 4), "z": round(z, 2),
                      "label": "anomaly" if abs(z) > THRESHOLD else "normal", "source": band.source}
@@ -140,7 +166,7 @@ class AnomalyDemo:
             "points": [[s * DT, round(v, 4)] for s, v in self.points if s >= since],
             "bands": [[s * DT, round(self.bands[s].expected, 4), round(self.bands[s].sigma, 4),
                        self.bands[s].source] for s in steps],
-            "detections": [d for d in self.detections if d["t"] >= since * DT],
+            "detections": [d for d in self.detections if d["t"] >= since * DT] + list(self.pending.values()),
         }
 
 
