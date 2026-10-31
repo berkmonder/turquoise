@@ -1,6 +1,7 @@
 # The web app (frontend/): on every push to main that touches it, build its image, start it and check
-# it answers (as the server will), then push it to the VPS's registry over Tailscale. The VPS runs it
-# within ~2 minutes and goes back to the previous image if it doesn't get healthy there.
+# it answers (as the server will), then publish it to GitHub's registry (ghcr.io/berkmonder/turquoise-web).
+# The VPS copies each new version into its own registry, runs it within ~4 minutes and goes back to the
+# previous image if it doesn't get healthy there.
 name: web
 on:
   push:
@@ -9,33 +10,32 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
-  id-token: write # Tailscale accepts this run's GitHub identity: no secret is stored here
+  packages: write # publish the image (with this run's own token; nothing stored)
 concurrency:
   group: deploy-web
 env:
-  IMAGE: turquoise-web
-  REGISTRY: 100.75.141.94:5000 # the VPS, over Tailscale
+  IMAGE: ghcr.io/berkmonder/turquoise-web
 jobs:
   deploy:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
       - name: Build
-        run: podman build --label org.opencontainers.image.revision=${{ github.sha }} -t "$IMAGE" frontend
+        run: |
+          podman build -t "$IMAGE:latest" -t "$IMAGE:${{ github.sha }}" \
+            --label org.opencontainers.image.revision=${{ github.sha }} \
+            --label org.opencontainers.image.source=https://github.com/${{ github.repository }} frontend
       - name: Start it and check it answers
         run: |
-          podman run -d --name smoke "$IMAGE"
+          podman run -d --name smoke "$IMAGE:latest"
           for _ in $(seq 30); do
             podman exec smoke wget -q --spider http://127.0.0.1:80/ && exit 0
             sleep 2
           done
           podman logs smoke
           exit 1
-      - name: Join the tailnet
-        uses: tailscale/github-action@v4.2.0
-        with:
-          oauth-client-id: ${{ vars.TS_CLIENT_ID }}
-          audience: ${{ vars.TS_AUDIENCE }}
-          tags: tag:ci
-      - name: Push to the VPS
-        run: podman push --tls-verify=false "$IMAGE" "docker://$REGISTRY/$IMAGE:latest"
+      - name: Publish
+        run: |
+          podman login ghcr.io -u "${{ github.actor }}" --password-stdin <<<"${{ secrets.GITHUB_TOKEN }}"
+          podman push "$IMAGE:${{ github.sha }}"
+          podman push "$IMAGE:latest"

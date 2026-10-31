@@ -41,8 +41,9 @@ CPU. To use Berk's GPU, set `GATEWAY_URL`/`GATEWAY_KEY` and `FORECASTER_URL`/`FO
 ## Deploy
 
 Push to `main`: CI checks it (ruff, ty, tests), builds the images, starts each one and checks it
-answers, then pushes it to the VPS's registry over Tailscale. Within 2 minutes the VPS runs it, and goes
-back to the previous image if it isn't healthy.
+answers, then publishes it to GitHub's registry (`ghcr.io/berkmonder/turquoise`, `turquoise-web`). The
+VPS copies each new version into its own registry and runs it within about 4 minutes, and goes back to
+the previous image if it isn't healthy.
 
 How it runs on the VPS (domain, environment, secrets, health check) is in
 [nix-dotfiles](https://github.com/berkmonder/nix-dotfiles): `hosts/vps/apps.nix`, entries `turquoise`

@@ -1,7 +1,8 @@
 # The API (backend/): on pushes and pull requests, ruff, ty and the tests must pass; on main, its image
 # is then built, started against a throwaway Postgres (it must answer /api/health, as on the server) and
-# pushed to the VPS's registry over Tailscale. The VPS runs it within ~2 minutes and goes back to the
-# previous image if it doesn't get healthy there (nix-dotfiles: hosts/vps/apps.nix).
+# published to GitHub's registry (ghcr.io/berkmonder/turquoise). The VPS copies each new version into
+# its own registry, runs it within ~4 minutes and goes back to the previous image if it doesn't get
+# healthy there (nix-dotfiles: hosts/vps/apps.nix).
 name: api
 on:
   push:
@@ -12,10 +13,8 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
-  id-token: write # Tailscale accepts this run's GitHub identity: no secret is stored here
 env:
-  IMAGE: turquoise
-  REGISTRY: 100.75.141.94:5000 # the VPS, over Tailscale
+  IMAGE: ghcr.io/berkmonder/turquoise
 jobs:
   checks:
     runs-on: ubuntu-24.04
@@ -38,26 +37,29 @@ jobs:
     concurrency:
       group: deploy-api
     runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write # publish the image (with this run's own token; nothing stored)
     steps:
       - uses: actions/checkout@v5
       - name: Build
-        run: podman build --label org.opencontainers.image.revision=${{ github.sha }} -t "$IMAGE" backend
+        run: |
+          podman build -t "$IMAGE:latest" -t "$IMAGE:${{ github.sha }}" \
+            --label org.opencontainers.image.revision=${{ github.sha }} \
+            --label org.opencontainers.image.source=https://github.com/${{ github.repository }} backend
       - name: Start it with a database and check it answers
         run: |
           podman network create smoke
           podman run -d --network smoke --name db -e POSTGRES_PASSWORD=smoke -e POSTGRES_DB=turquoise docker.io/library/postgres:17-alpine
-          podman run -d --network smoke --name smoke -e DATABASE_URL=postgresql://postgres:smoke@db:5432/turquoise "$IMAGE"
+          podman run -d --network smoke --name smoke -e DATABASE_URL=postgresql://postgres:smoke@db:5432/turquoise "$IMAGE:latest"
           for _ in $(seq 60); do
             podman exec smoke python -c "import urllib.request as u; u.urlopen('http://127.0.0.1:8000/api/health', timeout=5)" && exit 0
             sleep 2
           done
           podman logs smoke
           exit 1
-      - name: Join the tailnet
-        uses: tailscale/github-action@v4.2.0
-        with:
-          oauth-client-id: ${{ vars.TS_CLIENT_ID }}
-          audience: ${{ vars.TS_AUDIENCE }}
-          tags: tag:ci
-      - name: Push to the VPS
-        run: podman push --tls-verify=false "$IMAGE" "docker://$REGISTRY/$IMAGE:latest"
+      - name: Publish
+        run: |
+          podman login ghcr.io -u "${{ github.actor }}" --password-stdin <<<"${{ secrets.GITHUB_TOKEN }}"
+          podman push "$IMAGE:${{ github.sha }}"
+          podman push "$IMAGE:latest"

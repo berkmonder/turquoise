@@ -88,6 +88,6 @@ own are brighter), and `frontend/src/pipelines.ts` explains each box.
 
 ## Running it
 
-One process (uvicorn): the queue, the rate limits and the live feed are in memory. Deploys go through
-CI to the VPS's registry; Podman on the VPS updates within 2 minutes and rolls back an image that
-doesn't get healthy. Health is `GET /api/health`; the VPS and an outside check (Upptime) watch it.
+One process (uvicorn): the queue, the rate limits and the live feed are in memory. CI publishes each
+image to GitHub's registry; the VPS copies new versions into its own registry, Podman there updates
+within a few minutes and rolls back an image that doesn't get healthy. Health is `GET /api/health`; the VPS and an outside check (Upptime) watch it.
