@@ -39,8 +39,15 @@ class Contact(SQLModel, table=True):
     created_at: datetime = Field(default_factory=now, index=True)
 
 
+def _url(url: str) -> str:
+    """Postgres through psycopg 3 (a plain postgresql:// URL would ask SQLAlchemy for psycopg2)."""
+    if url.startswith("postgresql://"):
+        return "postgresql+psycopg://" + url.removeprefix("postgresql://")
+    return url
+
+
 _connect_args = {"check_same_thread": False} if settings.database_url.startswith("sqlite") else {}
-engine = create_engine(settings.database_url, connect_args=_connect_args, pool_pre_ping=True)
+engine = create_engine(_url(settings.database_url), connect_args=_connect_args, pool_pre_ping=True)
 
 
 def init_db() -> None:
