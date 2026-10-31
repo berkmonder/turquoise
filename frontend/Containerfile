@@ -1,0 +1,12 @@
+# The turquoise web app as an image: built with Vite (React + TypeScript), served by Caddy as a
+# single-page app. Its API is a separate image (backend/Containerfile); the server routes /api there.
+FROM docker.io/library/node:22.23.2-bookworm-slim AS build
+WORKDIR /src
+COPY package.json package-lock.json ./
+RUN npm ci --no-audit --no-fund
+COPY . .
+RUN npm run build
+
+FROM docker.io/library/caddy:2.11.6-alpine
+COPY Caddyfile /etc/caddy/Caddyfile
+COPY --from=build /src/dist /srv
