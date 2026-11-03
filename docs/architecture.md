@@ -1,9 +1,9 @@
 # How turquoise works
 
-Two machines. The site and its API run on a small, always-on VPS (2 vCPU, 4 GB). Heavy work runs on
-Berk's PC, which has an RTX 3060 and is often off, asleep or busy with a game. The site must never be
-down because of the PC, so every GPU feature has a fallback on the VPS, and every answer says which one
-served it.
+Two machines. The site and its API run on a small, always-on VPS (2 vCPU, 4 GB). The chat's model runs
+on Berk's PC, which has an RTX 3060 and is often off, asleep or busy with a game. The site must never be
+down because of the PC, so the chat has a fallback on the VPS, and every answer says which one served
+it. The anomaly demo's forecaster, Chronos-Bolt, runs on the VPS itself.
 
 ```mermaid
 flowchart LR
@@ -13,31 +13,31 @@ flowchart LR
     web["web app (static)"]
     api["Turquoise API (FastAPI)"]
     search["CV search: BM25 + embeddings"]
+    chronos["Chronos-Bolt (ONNX, CPU)"]
     ar["robust AR forecaster"]
     pg[("Postgres: chats, contacts (90 days)")]
   end
   subgraph pc["Berk's PC · RTX 3060 · over Tailscale"]
-    gw["LiteLLM gateway"]
+    alperen["Alperen"]
     llama["llama.cpp: Qwen3.5-9B, 4 slots"]
-    chronos["Chronos-Bolt forecaster"]
   end
   phone(["Berk's phone (ntfy)"])
   visitor --> caddy --> web
   caddy -- "/api" --> api
-  api -- "GPU available" --> gw --> llama
-  api -- "GPU available" --> chronos
+  api -- "GPU available" --> alperen --> llama
   api -- "fallback" --> search
-  api -- "fallback" --> ar
+  api --> chronos
+  api -- "no model file" --> ar
   api --> pg
   api -- "contact" --> phone
 ```
 
 ## Is the GPU there?
 
-`app/gpu.py` checks each GPU service (the gateway, the forecaster) every 5 seconds over Tailscale. A
-service that doesn't answer is *offline*: requests go to the fallback at once, with no waiting for a
-timeout. Two failed requests in a row also take it offline for 30 seconds, which covers the case where
-the gateway answers but the engine behind it is down (a fine-tune, a restart). Both states show on the
+`app/gpu.py` checks Alperen (`/health`) every 5 seconds over Tailscale. When it doesn't answer it's
+*offline*: requests go to the fallback at once, with no waiting for a timeout. Two failed requests in
+a row also take it offline for 30 seconds. (While Alperen trains, its health stays green: a request
+takes the GPU back within seconds.) Both states show on the
 site (the "GPU online / offline" pill) and in the pipeline panel.
 
 ## Demo 1: the agent
@@ -56,8 +56,10 @@ site (the "GPU online / offline" pill) and in the pipeline panel.
   and the two rankings are merged with reciprocal rank fusion. The best sections are shown as they
   are, with why the GPU didn't answer.
 - **Limits:** 10 messages per visitor per 5 minutes, 800 characters each, a daily GPU budget for
-  everyone (500), and a gateway key that can use only this one model. The gateway is asked not to
-  log; turquoise keeps conversations for 90 days, as the notice under the chat says, then deletes them.
+  everyone (500), and a key that can use only Alperen's base model (the same answers every time, not
+  what it learned from Berk's own work), 3 requests at once, and isn't learned from: Alperen keeps no
+  content from it. Turquoise keeps conversations for 90 days, as the notice under the chat says, then
+  deletes them.
 - **Contact:** name, email and a message are stored (90 days) and sent to Berk's phone through ntfy.
 
 ## Demo 2: anomaly detection
@@ -66,8 +68,10 @@ site (the "GPU online / offline" pill) and in the pipeline panel.
   it never repeats, plus a slow Ornstein-Uhlenbeck wander. Four points a second, the same stream for
   everyone (server-sent events).
 - **The band:** every second the last 64 seconds are forecast 16 seconds ahead, with an uncertainty
-  for each step. On the GPU, Chronos-Bolt (a pretrained time-series model) returns quantiles; the
-  fallback is an AR(12) refitted every second by iteratively reweighted least squares (Huber weights, so
+  for each step. Chronos-Bolt (a pretrained time-series model, chronos-bolt-small) returns quantiles:
+  it runs on the VPS's CPU as ONNX, exported from PyTorch when the image is built
+  (`backend/scripts/export_chronos.py`, checked against the PyTorch pipeline), a few milliseconds a
+  forecast. The fallback, when the model file isn't there, is an AR(12) refitted every second by iteratively reweighted least squares (Huber weights, so
   outliers barely count), whose band is the wider of its theoretical spread and the errors it really
   made forecasting its own recent past. Each moment keeps the last forecast made before it.
 - **Detection:** a visitor's point is scored against the band the model had for that moment:
@@ -75,8 +79,8 @@ site (the "GPU online / offline" pill) and in the pipeline panel.
   placed in the forecast zone waits (shown hollow) until its moment comes, then is judged against the
   last band drawn before it. Only visitors' points are judged, never the generated signal.
 - **For anyone's data** (`POST /api/v1/anomaly/detect`): each point is compared with a forecast made
-  from the points before it (64 points of warm-up). On the GPU all windows go to Chronos-Bolt in one
-  batch; on the CPU the series is processed in order and each anomaly is clipped to the band's edge in
+  from the points before it (64 points of warm-up). All windows go to Chronos-Bolt in one batch;
+  with the fallback the series is processed in order and each anomaly is clipped to the band's edge in
   the history the next forecasts learn from, so one spike doesn't make its neighbours look odd too.
 
 ## The pipeline panel

@@ -11,12 +11,16 @@ class Settings(BaseSettings):
 
     database_url: str = "sqlite:///./turquoise.db"
 
-    # The GPU side: Alperen on Berk's PC, over Tailscale. Empty: always the fallback.
-    gateway_url: str = ""  # e.g. http://100.76.197.63:4000
-    gateway_key: str = ""  # alperen-turquoise-gateway-key: may use only the `about` model
-    gateway_model: str = "about"
-    forecaster_url: str = ""  # Alperen's time-series forecaster (Chronos-Bolt on the GPU)
-    forecaster_key: str = ""
+    # The GPU side: Alperen (github.com/berkmonder/alperen) on Berk's PC, over Tailscale. Empty: always
+    # the fallback. Its key may use only the base model, a few requests at a time, and isn't learned from.
+    alperen_url: str = ""  # e.g. http://100.76.197.63:8000
+    alperen_key: str = ""
+    alperen_model: str = "qwen3.5-9b"  # the base model: the same answers every time, not the learned one
+
+    # Chronos-Bolt, exported to ONNX when the image is built (scripts/export_chronos.py). Missing (a local
+    # run without the export): the anomaly demo uses its autoregression.
+    forecaster_model: Path = Path("/opt/chronos/chronos.onnx")
+    forecaster_threads: int = 2  # of the server's CPU
 
     # Where a "contact Berk" request goes: his phone (ntfy). Empty: stored only.
     ntfy_url: str = ""

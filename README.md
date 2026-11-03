@@ -34,9 +34,11 @@ cd backend && uv sync && uv run uvicorn app.main:app --port 8000   # settings: .
 cd frontend && npm install && npm run dev                            # http://localhost:5173, /api goes to :8000
 ```
 
-Without a gateway the chat answers from the CV search; without a forecaster the anomaly demo uses the
-CPU. To use Berk's GPU, set `GATEWAY_URL`/`GATEWAY_KEY` and `FORECASTER_URL`/`FORECASTER_KEY` (the keys:
-`scripts/secret.sh alperen-turquoise-gateway-key` and `alperen-forecaster-key` in Alperen's repository).
+Without Alperen the chat answers from the CV search: to use Berk's GPU, set `ALPEREN_URL` and
+`ALPEREN_KEY` (on the PC: `podman exec alperen alperen keys add turquoise --model qwen3.5-9b
+--concurrency 3 --no-learning`). The anomaly demo forecasts with Chronos-Bolt when its ONNX export is at
+`FORECASTER_MODEL` (the image has it; locally: `backend/scripts/export_chronos.py`), with its robust
+autoregression otherwise.
 
 ## Deploy
 
@@ -47,5 +49,5 @@ the previous image if it isn't healthy.
 
 How it runs on the VPS (domain, environment, secrets, health check) is in
 [nix-dotfiles](https://github.com/berkmonder/nix-dotfiles): `hosts/vps/apps.nix`, entries `turquoise`
-(the API) and `turquoise-web` (this web app). The GPU side is Alperen on Berk's PC: the model `about`
-behind its LiteLLM gateway, and its forecaster service.
+(the API) and `turquoise-web` (this web app). The GPU side is [Alperen](https://github.com/berkmonder/alperen)
+on Berk's PC: its base model, through a key that may use nothing else and isn't learned from.

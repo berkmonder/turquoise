@@ -5,7 +5,6 @@ import asyncio
 from collections.abc import AsyncIterator
 from typing import Any
 
-import httpx
 import numpy as np
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
@@ -15,7 +14,6 @@ from ..events import Trace, sse
 from ..limits import visitor
 from ..state import state
 from .engine import AnomalyDemo, detect_sequential, detect_series
-from .forecast import chronos
 
 router = APIRouter()
 demo: AnomalyDemo | None = None  # made at startup (main.lifespan)
@@ -70,7 +68,7 @@ class Anomaly(BaseModel):
 class Detected(BaseModel):
     anomalies: list[Anomaly]
     checked_from: int  # the first points only teach the model; checking starts here
-    served_by: str  # "gpu" (Chronos-Bolt on Berk's PC) or "fallback" (autoregression on the server)
+    served_by: str  # "chronos" (Chronos-Bolt) or "fallback" (autoregression), both on the server's CPU
 
 
 @router.post("/api/v1/anomaly/detect", tags=["API"], summary="Find anomalies in a series")
@@ -87,16 +85,15 @@ async def detect(series: Series, request: Request) -> Detected:
     first, horizon, context = 64, 16, 256
     found = None
     served_by = "fallback"
-    if state.forecaster.available:
+    if state.chronos.available:
         starts = list(range(first, len(values), horizon))
         windows = [values[max(0, s - context):s] for s in starts]
         try:
-            forecasts = await chronos(state.client, state.forecaster, windows, horizon, timeout=10)
-            state.forecaster.succeeded()
+            forecasts = await asyncio.to_thread(state.chronos.forecast, windows, horizon)
             found = detect_series(series.values, series.threshold, forecasts, starts, horizon)
-            served_by = "gpu"
-        except (httpx.HTTPError, KeyError, ValueError):
-            state.forecaster.failed()
+            served_by = "chronos"
+        except Exception:  # noqa: BLE001 - a broken model file: the autoregression answers
+            found = None
     if found is None:
         found = await asyncio.to_thread(detect_sequential, series.values, series.threshold, first,
                                         horizon, context)

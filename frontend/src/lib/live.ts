@@ -13,7 +13,7 @@ export function useLive(kinds: string[]) {
     else if (event.type === "stage" && key.split(",").includes(event.kind)) setEvents((e) => [...e, event]);
     else if (event.type === "gpu")
       setStatus((s) =>
-        s && (event.service === "llm" || event.service === "forecaster")
+        s && event.service === "llm"
           ? { ...s, gpu: { ...s.gpu, [event.service]: { ...s.gpu[event.service], available: event.available } } }
           : s,
       );

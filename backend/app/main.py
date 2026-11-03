@@ -43,9 +43,9 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     state.profile = re.sub(r"<!--.*?-->", "", settings.profile_path.read_text(encoding="utf-8"),
                            flags=re.S)
     state.search = ProfileSearch(state.profile, settings.embedding_model or None)
-    anomaly.demo = AnomalyDemo(state.forecaster, state.client)
+    anomaly.demo = AnomalyDemo(state.chronos)
     tasks = [
-        asyncio.create_task(gpu.watch([state.llm, state.forecaster])),
+        asyncio.create_task(gpu.watch([state.llm])),
         asyncio.create_task(anomaly.demo.run()),
         asyncio.create_task(forget_every_day()),
     ]

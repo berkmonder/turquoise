@@ -13,6 +13,7 @@ dependencies = [
   "numpy>=2.0",
   "rank-bm25>=0.2.2",
   "fastembed>=0.4",
+  "onnxruntime>=1.20",  # Chronos-Bolt (fastembed has it too)
 ]
 
 [dependency-groups]
@@ -31,3 +32,6 @@ select = ["E", "F", "I", "B", "UP"]
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
+
+[tool.ty.src]
+exclude = ["scripts/"]  # run at build time, with PyTorch (export_chronos.py)

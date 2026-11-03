@@ -2,7 +2,7 @@
 // points are judged against it as they click.
 
 import { useRef, useState } from "react";
-import { GpuPill } from "../components/GpuPill";
+import { ForecasterPill } from "../components/GpuPill";
 import { PanelToggle, usePanel } from "../components/PanelToggle";
 import { Pipeline } from "../components/Pipeline";
 import { type Detection, StreamChart, type StreamState } from "../components/StreamChart";
@@ -101,9 +101,8 @@ export function Anomaly() {
     }
   }
 
-  const forecaster = live.status?.gpu.forecaster;
-  const offline = new Set(forecaster && forecaster.configured && !forecaster.available ? ["chronos"] : []);
-  if (forecaster && !forecaster.configured) offline.add("chronos");
+  const forecaster = live.status?.forecaster;
+  const offline = new Set(forecaster && !forecaster.available ? ["chronos"] : []);
 
   return (
     <div className={`demo${panel ? " with-panel" : ""}`}>
@@ -119,7 +118,7 @@ export function Anomaly() {
             </p>
           </div>
           <div className="head-actions">
-            <GpuPill state={forecaster} />
+            <ForecasterPill state={forecaster} />
             <PanelToggle open={panel} onToggle={togglePanel} />
           </div>
         </header>
@@ -135,7 +134,7 @@ export function Anomaly() {
 
         <div className="legend">
           <span><i className="sw signal" /> the signal</span>
-          <span><i className="sw band-gpu" /> band by Chronos-Bolt (GPU)</span>
+          <span><i className="sw band-chronos" /> band by Chronos-Bolt</span>
           <span><i className="sw band-fallback" /> band by robust AR (fallback, CPU)</span>
           <span><i className="sw normal" /> normal point</span>
           <span><i className="sw anomaly" /> anomaly, with its distance in σ</span>
@@ -143,7 +142,7 @@ export function Anomaly() {
         </div>
         <p className="muted small">
           Forecasting now:{" "}
-          {source === "gpu" ? "Chronos-Bolt on Berk's RTX 3060" : source ? "robust autoregression on the server (the GPU isn't available)" : "…"}.
+          {source === "chronos" ? "Chronos-Bolt on the server's CPU" : source ? "robust autoregression on the server (Chronos-Bolt isn't loaded)" : "…"}.
           Only visitors' points are judged, never the generated signal. Your own points have a ring.
         </p>
       </section>

@@ -52,7 +52,7 @@ async def answer(history: list[dict[str, str]], trace: Trace) -> AsyncIterator[d
                 yield trace.stage("gpu", active=state.queue.active, slots=state.queue.slots)
                 started = time.perf_counter()
                 first_token_ms = None
-                async for text in llm.stream(state.client, state.llm, settings.gateway_model,
+                async for text in llm.stream(state.client, state.llm, settings.alperen_model,
                                              prompt.messages(state.profile, history)):
                     if first_token_ms is None:
                         first_token_ms = round((time.perf_counter() - started) * 1000)
@@ -65,7 +65,7 @@ async def answer(history: list[dict[str, str]], trace: Trace) -> AsyncIterator[d
                                   chunks_per_s=round(len(parts) / seconds, 1))
                 yield done(trace, "gpu", first_token_ms=first_token_ms)
                 return
-            except (httpx.HTTPError, llm.GatewayError):
+            except (httpx.HTTPError, llm.AlperenError):
                 state.llm.failed()
                 if parts:  # half an answer already went out: say so instead of starting over
                     yield {"type": "token", "text": "\n\n*(The answer was cut off: the GPU stopped "

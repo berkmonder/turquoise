@@ -151,7 +151,7 @@ main { max-width: 1320px; margin: 0 auto; padding: 28px 24px 60px; }
 .grid { stroke: #1d2a35; }
 .axis { fill: var(--muted); font-size: 11px; }
 .band { stroke: none; }
-.band-gpu { fill: rgba(167, 139, 250, 0.2); }
+.band-chronos { fill: rgba(167, 139, 250, 0.2); }
 .band-fallback { fill: rgba(56, 189, 248, 0.16); }
 .expected { fill: none; stroke: #6b7c8a; stroke-dasharray: 4 4; stroke-width: 1.2; }
 .signal { fill: none; stroke: #e6edf3; stroke-width: 2; stroke-linejoin: round; }
@@ -171,7 +171,7 @@ main { max-width: 1320px; margin: 0 auto; padding: 28px 24px 60px; }
 .legend { display: flex; flex-wrap: wrap; gap: 14px; margin: 12px 2px 4px; font-size: 0.84rem; color: var(--muted); }
 .sw { display: inline-block; width: 14px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: middle; }
 .sw.signal { background: #e6edf3; height: 3px; }
-.sw.band-gpu { background: rgba(167, 139, 250, 0.45); }
+.sw.band-chronos { background: rgba(167, 139, 250, 0.45); }
 .sw.band-fallback { background: rgba(56, 189, 248, 0.4); }
 .sw.normal { background: var(--live); border-radius: 50%; width: 10px; }
 .sw.anomaly { background: var(--bad); border-radius: 50%; width: 10px; }

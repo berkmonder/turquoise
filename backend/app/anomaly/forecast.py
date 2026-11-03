@@ -1,17 +1,18 @@
-"""Forecasts with an uncertainty band, two ways:
+"""Forecasts with an uncertainty band, two ways, both on the server's CPU:
 
-- GPU: Chronos-Bolt, a pretrained time-series model, on Berk's PC (Alperen's forecaster service);
-- fallback: an autoregressive model fitted on the spot (robust least squares, numpy), on the
-  VPS's CPU.
+- Chronos-Bolt, a pretrained time-series model (Amazon's chronos-bolt-small), as ONNX: exported from
+  PyTorch when the image is built (scripts/export_chronos.py), run with onnxruntime;
+- fallback: an autoregressive model fitted on the spot (robust least squares, numpy), when the
+  model isn't there (a local run without the export).
 
 Both return, for each future step, the expected value and its standard deviation."""
 
+import threading
 from dataclasses import dataclass
+from pathlib import Path
+from typing import Any
 
-import httpx
 import numpy as np
-
-from ..gpu import GpuService
 
 Z_80 = 1.2816  # q10 and q90 lie 1.28 standard deviations from the median
 
@@ -20,7 +21,7 @@ Z_80 = 1.2816  # q10 and q90 lie 1.28 standard deviations from the median
 class Forecast:
     median: np.ndarray
     sigma: np.ndarray
-    source: str  # "gpu" or "fallback"
+    source: str  # "chronos" or "fallback"
 
 
 def _fit(y: np.ndarray, order: int, rounds: int = 4) -> tuple[np.ndarray, float, np.ndarray]:
@@ -90,17 +91,45 @@ def autoregressive(values: np.ndarray, horizon: int, order: int = 12) -> Forecas
     return Forecast(median, sigma, "fallback")
 
 
-async def chronos(client: httpx.AsyncClient, service: GpuService, contexts: list[np.ndarray],
-                  horizon: int, timeout: float = 2.0) -> list[Forecast]:
-    """Chronos-Bolt on the GPU, for several series at once (one batch)."""
-    response = await client.post(
-        f"{service.url}/forecast",
-        json={"contexts": [c.tolist() for c in contexts], "horizon": horizon,
-              "quantiles": [0.1, 0.5, 0.9]},
-        headers=service.headers, timeout=timeout)
-    response.raise_for_status()
-    out = []
-    for low, mid, high in response.json()["quantiles"]:
-        low, mid, high = np.asarray(low), np.asarray(mid), np.asarray(high)
-        out.append(Forecast(mid, np.maximum((high - low) / (2 * Z_80), 1e-6), "gpu"))
-    return out
+LENGTH = 512  # the model's input: the last 512 points; shorter series are padded with NaN (missing)
+QUANTILES = [0, 4, 8]  # of its nine (10% … 90%): 10%, 50%, 90%
+STEPS = 64  # what one forward pass forecasts
+
+
+class Chronos:
+    """Chronos-Bolt on the CPU. The model loads on first use; every series in a call is one batch."""
+
+    def __init__(self, path: Path, threads: int = 2) -> None:
+        self.path, self.threads = path, threads
+        self._session: Any = None
+        self._lock = threading.Lock()
+
+    @property
+    def available(self) -> bool:
+        return self.path.exists()
+
+    def session(self) -> Any:
+        with self._lock:
+            if self._session is None:
+                import onnxruntime
+
+                options = onnxruntime.SessionOptions()
+                options.intra_op_num_threads = self.threads
+                options.inter_op_num_threads = 1
+                self._session = onnxruntime.InferenceSession(str(self.path), options,
+                                                             providers=["CPUExecutionProvider"])
+        return self._session
+
+    def forecast(self, contexts: list[np.ndarray], horizon: int) -> list[Forecast]:
+        if not 1 <= horizon <= STEPS:
+            raise ValueError(f"Chronos-Bolt forecasts 1 to {STEPS} steps at once")
+        batch = np.full((len(contexts), LENGTH), np.nan, np.float32)
+        for i, context in enumerate(contexts):
+            tail = np.asarray(context, dtype=np.float32)[-LENGTH:]
+            batch[i, LENGTH - len(tail):] = tail
+        quantiles = self.session().run(None, {"context": batch})[0]  # [series, 9, 64]
+        out = []
+        for row in quantiles:
+            low, mid, high = row[QUANTILES, :horizon].astype(float)
+            out.append(Forecast(mid, np.maximum((high - low) / (2 * Z_80), 1e-6), "chronos"))
+        return out

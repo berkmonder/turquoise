@@ -20,7 +20,8 @@ def status() -> dict[str, Any]:
     return {
         "type": "status",
         "ts": time.time(),
-        "gpu": {"llm": state.llm.state(), "forecaster": state.forecaster.state()},
+        "gpu": {"llm": state.llm.state()},
+        "forecaster": {"model": "chronos-bolt-small", "available": state.chronos.available},
         "queue": {"active": state.queue.active, "waiting": state.queue.waiting,
                   "slots": state.queue.slots},
         "today": {"chats": s.chats, "gpu": s.gpu, "fallback": s.fallback,
