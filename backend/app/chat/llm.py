@@ -1,4 +1,4 @@
-"""The GPU path: Alperen's gateway on Berk's PC (OpenAI-compatible), answers streamed word by word."""
+"""The GPU path: Alperen on Berk's PC (OpenAI-compatible), answers streamed word by word."""
 
 import json
 from collections.abc import AsyncIterator
@@ -8,7 +8,7 @@ import httpx
 from ..gpu import GpuService
 
 
-class GatewayError(Exception):
+class AlperenError(Exception):
     pass
 
 
@@ -19,14 +19,15 @@ async def stream(client: httpx.AsyncClient, service: GpuService, model: str,
         "messages": messages,
         "stream": True,
         "temperature": 0.3,
-        "no-log": True,  # the gateway keeps nothing; turquoise keeps the chat for 90 days
-    }
+        "max_tokens": 700,
+        "chat_template_kwargs": {"enable_thinking": False},  # it answers at once
+    }  # Alperen keeps none of it: turquoise's key isn't learned from; turquoise keeps the chat 90 days
     timeout = httpx.Timeout(connect=3.0, read=30.0, write=10.0, pool=5.0)
     async with client.stream("POST", f"{service.url}/v1/chat/completions", json=body,
                              headers=service.headers, timeout=timeout) as response:
         if response.status_code != 200:
             detail = (await response.aread())[:200].decode(errors="replace")
-            raise GatewayError(f"{response.status_code}: {detail}")
+            raise AlperenError(f"{response.status_code}: {detail}")
         async for line in response.aiter_lines():
             if not line.startswith("data: "):
                 continue

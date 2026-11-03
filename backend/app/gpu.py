@@ -1,5 +1,5 @@
-"""Is Berk's PC there? Each GPU service on it (the LLM gateway, the forecaster) is checked every few
-seconds over Tailscale. A service that doesn't answer (the PC is off or asleep, Alperen is stopped for a
+"""Is Berk's PC there? Each GPU service on it (Alperen, the chat's model) is checked every few seconds
+over Tailscale. A service that doesn't answer (the PC is off or asleep, Alperen is stopped for a
 game) or whose requests keep failing is "offline": requests go to the fallback at once, without waiting
 for a timeout, until it answers again."""
 

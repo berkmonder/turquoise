@@ -25,7 +25,7 @@ EOF`;
 const anomalyReply = `{
   "anomalies": [{"index": 200, "value": 4.0, "expected": 0.75, "z": 41.3}],
   "checked_from": 64,       // the first points only teach the model
-  "served_by": "gpu"        // Chronos-Bolt on the GPU, or "fallback" (robust AR)
+  "served_by": "chronos"    // Chronos-Bolt, or "fallback" (robust AR), both on the server's CPU
 }`;
 
 export function ApiPage() {

@@ -24,7 +24,7 @@ class Message(SQLModel, table=True):
     conversation_id: str = Field(foreign_key="conversations.id", index=True)
     role: str  # "user" or "assistant"
     content: str
-    served_by: str | None = None  # "gpu" or "fallback"
+    served_by: str | None = None  # the chat: "gpu" or "fallback"
     reason: str | None = None  # why the fallback answered
     created_at: datetime = Field(default_factory=now, index=True)
 

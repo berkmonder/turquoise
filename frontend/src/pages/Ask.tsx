@@ -115,7 +115,7 @@ export function Ask() {
   }
 
   const llm = live.status?.gpu.llm;
-  const offline = new Set(llm && llm.configured && !llm.available ? ["gateway", "engine"] : []);
+  const offline = new Set(llm && llm.configured && !llm.available ? ["alperen", "engine"] : []);
   const q = live.status?.queue;
   const badges: Record<string, string> = q ? { queue: `${q.active}/${q.slots} busy · ${q.waiting} waiting` } : {};
   if (live.status && !live.status.search.semantic) badges.search = "BM25 (embeddings loading)";

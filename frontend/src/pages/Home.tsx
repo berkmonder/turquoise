@@ -1,7 +1,7 @@
 // The front page: what turquoise is, the demos, and how it's built.
 
 import { Link } from "react-router-dom";
-import { GpuPill } from "../components/GpuPill";
+import { ForecasterPill, GpuPill } from "../components/GpuPill";
 import { useLive } from "../lib/live";
 
 export function Home() {
@@ -18,7 +18,7 @@ export function Home() {
         </p>
         <div className="hero-status">
           <GpuPill state={live.status?.gpu.llm} label="LLM on the GPU" />
-          <GpuPill state={live.status?.gpu.forecaster} label="Forecaster on the GPU" />
+          <ForecasterPill state={live.status?.forecaster} />
         </div>
       </section>
 

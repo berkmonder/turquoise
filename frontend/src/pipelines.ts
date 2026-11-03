@@ -24,8 +24,8 @@ export const chatNodes: PipeNode[] = [
     info: "The fallback: no language model. The CV is cut into sections and matched two ways, by words (BM25) and by meaning (bge-small sentence embeddings on the CPU); the rankings are merged (reciprocal rank fusion) and the best sections are shown as they are.",
   },
   {
-    id: "gateway", label: "LiteLLM gateway", sub: "one key, one model", x: 90, y: 400, where: "pc",
-    info: "Alperen's gateway: every client of the GPU goes through it. Turquoise's key can use only this agent's model, a few requests at a time, and asks it to keep no logs.",
+    id: "alperen", label: "Alperen", sub: "one key, the base model", x: 90, y: 400, where: "pc",
+    info: "Alperen, the model engine on Berk's PC: it serves the model and learns from how it's used. Turquoise's key can use only the base model, a few requests at a time, and isn't learned from: visitors' chats aren't kept there.",
   },
   {
     id: "engine", label: "llama.cpp", sub: "Qwen3.5-9B · batched", x: 90, y: 480, where: "pc",
@@ -38,8 +38,8 @@ export const chatEdges: PipeEdge[] = [
   { from: "api", to: "router" },
   { from: "router", to: "queue" },
   { from: "router", to: "search" },
-  { from: "queue", to: "gateway" },
-  { from: "gateway", to: "engine" },
+  { from: "queue", to: "alperen" },
+  { from: "alperen", to: "engine" },
   { from: "engine", to: "visitor", back: true },
   { from: "search", to: "visitor", back: true },
 ];
@@ -53,7 +53,7 @@ export const chatFlow: Flow = (e, at) => {
     case "queue":
       return at === "queue" ? null : ["router", "queue"];
     case "gpu":
-      if (e.status === "active") return [at ?? "queue", "gateway", "engine"];
+      if (e.status === "active") return [at ?? "queue", "alperen", "engine"];
       if (e.status === "done") return ["engine", "visitor"];
       return null;
     case "fallback":
@@ -73,12 +73,12 @@ export const anomalyNodes: PipeNode[] = [
     info: "The model sees the last 256 points (64 seconds) each time it forecasts.",
   },
   {
-    id: "router", label: "Router", sub: "GPU or fallback?", x: 90, y: 200, where: "vps",
-    info: "Every second, the next 16 seconds are forecast: on Berk's GPU if it's there, otherwise on the server. The band's colour on the chart says which one made it.",
+    id: "router", label: "Router", sub: "Chronos or fallback?", x: 90, y: 200, where: "vps",
+    info: "Every second, the next 16 seconds are forecast: by Chronos-Bolt, or by the fallback if the model isn't loaded. The band's colour on the chart says which one made it.",
   },
   {
-    id: "chronos", label: "Chronos-Bolt", sub: "pretrained · GPU", x: 90, y: 305, where: "pc",
-    info: "Amazon's Chronos-Bolt, a pretrained time-series foundation model, on Berk's RTX 3060. It returns quantiles (10%, 50%, 90%), and the band is built from them.",
+    id: "chronos", label: "Chronos-Bolt", sub: "pretrained · CPU", x: 90, y: 305, where: "vps",
+    info: "Amazon's Chronos-Bolt, a pretrained time-series foundation model, on the server's CPU (as ONNX: a few milliseconds a forecast). It returns quantiles (10%, 50%, 90%), and the band is built from them.",
   },
   {
     id: "ar", label: "Robust AR", sub: "fitted live · CPU", x: 255, y: 200, where: "vps",
@@ -115,7 +115,7 @@ export const anomalyEdges: PipeEdge[] = [
 ];
 
 export const anomalyFlow: Flow = (e) => {
-  if (e.stage === "forecast") return ["generator", "buffer", "router", e.source === "gpu" ? "chronos" : "ar", "band"];
+  if (e.stage === "forecast") return ["generator", "buffer", "router", e.source === "chronos" ? "chronos" : "ar", "band"];
   if (e.stage === "detect") return e.status === "done" ? ["detector", "broadcast"] : ["visitor", "detector"];
   return null;
 };

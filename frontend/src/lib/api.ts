@@ -16,7 +16,8 @@ export type GpuState = { configured: boolean; available: boolean; since: number 
 
 export type Status = {
   type: "status";
-  gpu: { llm: GpuState; forecaster: GpuState };
+  gpu: { llm: GpuState };
+  forecaster: { model: string; available: boolean };
   queue: { active: number; waiting: number; slots: number };
   today: { chats: number; gpu: number; fallback: number; detections: number };
   search: { semantic: boolean };

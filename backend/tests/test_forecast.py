@@ -25,3 +25,33 @@ def test_spikes_are_found_with_few_false_alarms():
         assert {300, 450} <= found
         false_alarms += len(found - {300, 450})
     assert false_alarms <= 10 * 600 * 0.01  # under 1% of the points
+
+
+class FakeSession:
+    """Chronos-Bolt's nine quantiles, 0.1 to 0.9 around each series' last value; and what it was given."""
+
+    def __init__(self) -> None:
+        self.given: np.ndarray | None = None
+
+    def run(self, _outputs, feed):
+        self.given = feed["context"]
+        last = self.given[:, -1][:, None, None]
+        spread = np.linspace(-0.4, 0.4, 9)[None, :, None]
+        return [np.broadcast_to(last + spread, (len(self.given), 9, 64)).astype(np.float32)]
+
+
+def test_chronos_pads_short_series_and_turns_quantiles_into_a_band(tmp_path):
+    from app.anomaly.forecast import Z_80, Chronos
+
+    chronos = Chronos(tmp_path / "chronos.onnx")
+    assert not chronos.available  # no export: the demo uses its autoregression
+    session = FakeSession()
+    chronos._session = session
+    short, long = np.arange(100, dtype=float), np.arange(600, dtype=float)
+    [a, b] = chronos.forecast([short, long], 16)
+    given = session.given
+    assert given is not None and given.shape == (2, 512)
+    assert np.isnan(given[0, :412]).all() and given[0, -1] == 99  # padded on the left
+    assert given[1, 0] == 88 and given[1, -1] == 599  # the last 512 points
+    assert a.source == "chronos" and len(a.median) == 16 and a.median[0] == 99
+    assert np.allclose(a.sigma, 0.8 / (2 * Z_80))  # the 10%-90% spread as a standard deviation

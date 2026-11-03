@@ -6,6 +6,7 @@ last band the model drew for that moment. Only visitors' points are judged, neve
 
 import asyncio
 import itertools
+import logging
 import math
 import random
 import time
@@ -13,13 +14,13 @@ from collections import deque
 from dataclasses import dataclass
 from typing import Any
 
-import httpx
 import numpy as np
 
 from ..events import Hub, Trace
-from ..gpu import GpuService
 from ..state import state
-from .forecast import Forecast, autoregressive, chronos
+from .forecast import Chronos, Forecast, autoregressive
+
+log = logging.getLogger(__name__)
 
 DT = 0.25  # seconds between points
 HORIZON = 64  # forecast steps: 16 seconds ahead
@@ -56,8 +57,8 @@ class Band:
 
 
 class AnomalyDemo:
-    def __init__(self, forecaster: GpuService, client: httpx.AsyncClient) -> None:
-        self.forecaster, self.client = forecaster, client
+    def __init__(self, chronos: Chronos) -> None:
+        self.chronos = chronos
         self.signal = Signal()
         self.points: deque[tuple[int, float]] = deque(maxlen=int(600 / DT))  # (step, value)
         self.bands: dict[int, Band] = {}  # step → the latest forecast made before it
@@ -92,12 +93,11 @@ class AnomalyDemo:
         trace = Trace("anomaly")
         context = np.array([v for _, v in list(self.points)[-CONTEXT:]])
         result: Forecast | None = None
-        if self.forecaster.available:
+        if self.chronos.available:
             try:
-                result = (await chronos(self.client, self.forecaster, [context], HORIZON))[0]
-                self.forecaster.succeeded()
-            except (httpx.HTTPError, KeyError, ValueError):
-                self.forecaster.failed()
+                result = (await asyncio.to_thread(self.chronos.forecast, [context], HORIZON))[0]
+            except Exception:  # noqa: BLE001 - a broken model file: the autoregression carries on
+                log.exception("Chronos-Bolt failed")
         if result is None:
             result = await asyncio.to_thread(autoregressive, context, HORIZON)
         first = self.step + 1
