@@ -36,7 +36,7 @@ class State:
     search: ProfileSearch | None = None
     client: httpx.AsyncClient = field(default_factory=httpx.AsyncClient)
     llm: GpuService = field(default_factory=lambda: GpuService(
-        "llm", settings.alperen_url, "/health", settings.alperen_key))
+        "llm", settings.alperen_url, "/health/readiness", settings.alperen_key))
     chronos: Chronos = field(default_factory=lambda: Chronos(settings.forecaster_model,
                                                              settings.forecaster_threads))
     queue: SlotQueue = field(default_factory=lambda: SlotQueue(settings.gpu_concurrency,
