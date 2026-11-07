@@ -34,10 +34,10 @@ flowchart LR
 
 ## Is the GPU there?
 
-`app/gpu.py` checks Alperen (`/health`) every 5 seconds over Tailscale. When it doesn't answer it's
+`app/gpu.py` checks the PC's model gateway (LiteLLM's `/health/readiness`) every 5 seconds over Tailscale. When it doesn't answer it's
 *offline*: requests go to the fallback at once, with no waiting for a timeout. Two failed requests in
-a row also take it offline for 30 seconds. (While Alperen trains, its health stays green: a request
-takes the GPU back within seconds.) Both states show on the
+a row also take it offline for 30 seconds. (At night, while Alperen trains, the model itself is
+stopped but the gateway still answers: the failed requests take it offline, and chat uses the fallback.) Both states show on the
 site (the "GPU online / offline" pill) and in the pipeline panel.
 
 ## Demo 1: the agent
