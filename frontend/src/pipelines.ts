@@ -24,8 +24,8 @@ export const chatNodes: PipeNode[] = [
     info: "The fallback: no language model. The CV is cut into sections and matched two ways, by words (BM25) and by meaning (bge-small sentence embeddings on the CPU); the rankings are merged (reciprocal rank fusion) and the best sections are shown as they are.",
   },
   {
-    id: "alperen", label: "Alperen", sub: "one key, the base model", x: 90, y: 400, where: "pc",
-    info: "Alperen, the model engine on Berk's PC: it serves the model and learns from how it's used. Turquoise's key can use only the base model, a few requests at a time, and isn't learned from: visitors' chats aren't kept there.",
+    id: "gateway", label: "LiteLLM", sub: "one key, the chat model", x: 90, y: 400, where: "pc",
+    info: "LiteLLM, the model API on Berk's PC: one door for every client of the model, each with its own key and limits. Turquoise's key can use only the chat model, a few requests at a time.",
   },
   {
     id: "engine", label: "llama.cpp", sub: "Qwen3.5-9B · batched", x: 90, y: 480, where: "pc",
@@ -38,8 +38,8 @@ export const chatEdges: PipeEdge[] = [
   { from: "api", to: "router" },
   { from: "router", to: "queue" },
   { from: "router", to: "search" },
-  { from: "queue", to: "alperen" },
-  { from: "alperen", to: "engine" },
+  { from: "queue", to: "gateway" },
+  { from: "gateway", to: "engine" },
   { from: "engine", to: "visitor", back: true },
   { from: "search", to: "visitor", back: true },
 ];
@@ -53,7 +53,7 @@ export const chatFlow: Flow = (e, at) => {
     case "queue":
       return at === "queue" ? null : ["router", "queue"];
     case "gpu":
-      if (e.status === "active") return [at ?? "queue", "alperen", "engine"];
+      if (e.status === "active") return [at ?? "queue", "gateway", "engine"];
       if (e.status === "done") return ["engine", "visitor"];
       return null;
     case "fallback":

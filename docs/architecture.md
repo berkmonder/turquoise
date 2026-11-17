@@ -18,13 +18,13 @@ flowchart LR
     pg[("Postgres: chats, contacts (90 days)")]
   end
   subgraph pc["Berk's PC · RTX 3060 · over Tailscale"]
-    alperen["Alperen"]
+    gateway["LiteLLM: keys, limits"]
     llama["llama.cpp: Qwen3.5-9B, 4 slots"]
   end
   phone(["Berk's phone (ntfy)"])
   visitor --> caddy --> web
   caddy -- "/api" --> api
-  api -- "GPU available" --> alperen --> llama
+  api -- "GPU available" --> gateway --> llama
   api -- "fallback" --> search
   api --> chronos
   api -- "no model file" --> ar
@@ -36,8 +36,8 @@ flowchart LR
 
 `app/gpu.py` checks the PC's model gateway (LiteLLM's `/health/readiness`) every 5 seconds over Tailscale. When it doesn't answer it's
 *offline*: requests go to the fallback at once, with no waiting for a timeout. Two failed requests in
-a row also take it offline for 30 seconds. (At night, while Alperen trains, the model itself is
-stopped but the gateway still answers: the failed requests take it offline, and chat uses the fallback.) Both states show on the
+a row also take it offline for 30 seconds. (When the model is stopped, for a game, the gateway still
+answers: the failed requests take it offline, and chat uses the fallback.) Both states show on the
 site (the "GPU online / offline" pill) and in the pipeline panel.
 
 ## Demo 1: the agent
@@ -56,9 +56,7 @@ site (the "GPU online / offline" pill) and in the pipeline panel.
   and the two rankings are merged with reciprocal rank fusion. The best sections are shown as they
   are, with why the GPU didn't answer.
 - **Limits:** 10 messages per visitor per 5 minutes, 800 characters each, a daily GPU budget for
-  everyone (500), and a key that can use only Alperen's base model (the same answers every time, not
-  what it learned from Berk's own work), 3 requests at once, and isn't learned from: Alperen keeps no
-  content from it. Turquoise keeps conversations for 90 days, as the notice under the chat says, then
+  everyone (500), and a key that can use only the chat model, 3 requests at once. Turquoise keeps conversations for 90 days, as the notice under the chat says, then
   deletes them.
 - **Contact:** name, email and a message are stored (90 days) and sent to Berk's phone through ntfy.
 

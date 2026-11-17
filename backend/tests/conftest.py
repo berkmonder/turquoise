@@ -6,6 +6,6 @@ import tempfile
 
 os.environ["DATABASE_URL"] = f"sqlite:///{tempfile.mkdtemp()}/test.db"
 os.environ["EMBEDDING_MODEL"] = ""
-os.environ["ALPEREN_URL"] = ""
+os.environ["LLM_URL"] = ""
 os.environ["FORECASTER_MODEL"] = "/nonexistent/chronos.onnx"
 os.environ["NTFY_URL"] = ""

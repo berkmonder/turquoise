@@ -34,9 +34,8 @@ cd backend && uv sync && uv run uvicorn app.main:app --port 8000   # settings: .
 cd frontend && npm install && npm run dev                            # http://localhost:5173, /api goes to :8000
 ```
 
-Without Alperen the chat answers from the CV search: to use Berk's GPU, set `ALPEREN_URL` and
-`ALPEREN_KEY` (on the PC: `podman exec alperen alperen keys add turquoise --model qwen3.5-9b
---concurrency 3 --no-learning`). The anomaly demo forecasts with Chronos-Bolt when its ONNX export is at
+Without the PC's model API the chat answers from the CV search: to use Berk's GPU, set `LLM_URL` and
+`LLM_KEY` (turquoise's key at the PC's LiteLLM, in nix-dotfiles' `hosts/desktop/secrets.yaml`). The anomaly demo forecasts with Chronos-Bolt when its ONNX export is at
 `FORECASTER_MODEL` (the image has it; locally: `backend/scripts/export_chronos.py`), with its robust
 autoregression otherwise.
 
@@ -49,5 +48,5 @@ the previous image if it isn't healthy.
 
 How it runs on the VPS (domain, environment, secrets, health check) is in
 [nix-dotfiles](https://github.com/berkmonder/nix-dotfiles): `hosts/vps/apps.nix`, entries `turquoise`
-(the API) and `turquoise-web` (this web app). The GPU side is [Alperen](https://github.com/berkmonder/alperen)
-on Berk's PC: its base model, through a key that may use nothing else and isn't learned from.
+(the API) and `turquoise-web` (this web app). The GPU side is the model API on Berk's PC (LiteLLM in
+front of llama.cpp, nix-dotfiles' `hosts/desktop/llm/`), through a key that may use only the chat model.

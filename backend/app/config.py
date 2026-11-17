@@ -11,11 +11,11 @@ class Settings(BaseSettings):
 
     database_url: str = "sqlite:///./turquoise.db"
 
-    # The GPU side: Alperen (github.com/berkmonder/alperen) on Berk's PC, over Tailscale. Empty: always
-    # the fallback. Its key may use only the base model, a few requests at a time, and isn't learned from.
-    alperen_url: str = ""  # e.g. http://100.76.197.63:8000
-    alperen_key: str = ""
-    alperen_model: str = "qwen3.5-9b"  # the base model: the same answers every time, not the learned one
+    # The GPU side: the model API on Berk's PC (LiteLLM), over Tailscale. Empty: always the fallback. Its
+    # key may use only the chat model, a few requests at a time.
+    llm_url: str = ""  # e.g. http://100.76.197.63:8000
+    llm_key: str = ""
+    llm_model: str = "default"  # the PC's chat model, by the name that stays when the model changes
 
     # Chronos-Bolt, exported to ONNX when the image is built (scripts/export_chronos.py). Missing (a local
     # run without the export): the anomaly demo uses its autoregression.
