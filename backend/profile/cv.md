@@ -115,7 +115,7 @@ side, each in its own terminal and git worktree, with review, commit and merge i
 
 ## Education
 
-Where Berk studied: İstanbul University, for both degrees. The subject was physics: a bachelor's
+Where Berk studied: İstanbul University, for both degrees. The field of study was physics: a bachelor's
 degree, then a master's in high energy and plasma physics.
 
 ### M.Sc., High Energy and Plasma Physics, İstanbul University (2024)
