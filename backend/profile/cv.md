@@ -15,6 +15,9 @@ Specialized in LLM-powered systems (RAG assistants, agents), anomaly detection, 
 processing and data pipelines. Strong in Python, Docker, Git, Airflow, GCP and modern LLM tools
 (LangChain, Ollama, llama.cpp, LiteLLM). M.Sc. in physics.
 
+With LLMs, Berk has built a RAG assistant over internal data (Teknasyon), a telco LLM assistant
+(P.I. Works), and his own production LLM service, which runs this assistant (see Projects).
+
 ## Services
 
 Berk offers consulting, hands-on builds and team training, in Turkish or English, remotely or on-site
@@ -45,7 +48,8 @@ material.
 
 A free 30-minute intro call; then a short written proposal with scope, deliverables, timeline and a
 fixed price; then work in small steps with regular check-ins; and a handover with documentation and a
-walkthrough, so the team can run it without Berk. Berk signs NDAs, and can set up open models on a
+walkthrough, so the team can run it without Berk. Cost: each engagement has a fixed price, set in
+the proposal after the free intro call, so ask Berk for a quote. Berk signs NDAs, and can set up open models on a
 company's own servers so that sensitive data never leaves them.
 
 ## Experience
@@ -111,8 +115,8 @@ side, each in its own terminal and git worktree, with review, commit and merge i
 
 ## Education
 
-Berk studied physics at İstanbul University: a bachelor's degree, then a master's in high energy and
-plasma physics.
+Where Berk studied: İstanbul University, for both degrees. His study was physics: a bachelor's
+degree, then a master's in high energy and plasma physics.
 
 ### M.Sc., High Energy and Plasma Physics, İstanbul University (2024)
 
@@ -124,6 +128,6 @@ GPA 3.31.
 
 ## Contact and availability
 
-Berk is open to consulting and training work, and happy to talk with recruiters about ML and MLOps
-roles. Email: berkmonder@gmail.com. LinkedIn: linkedin.com/in/berkmonder. GitHub:
+Berk is open to new projects (consulting and training) and to new roles: he's happy to talk with
+recruiters about ML and MLOps roles and jobs. Email: berkmonder@gmail.com. LinkedIn: linkedin.com/in/berkmonder. GitHub:
 github.com/berkmonder. Website: berkmonder.com. Or leave an email with "Contact Berk" in this chat.
