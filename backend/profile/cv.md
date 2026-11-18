@@ -4,8 +4,8 @@
 search cuts this file into sections at them, and shows a matching section as it is. Source: Berk's CV
 (berkmonder.com/files/resume_muhammedBerkOnder.pdf) and the services on berkmonder.com. -->
 
-Muhammed Berk Önder is an AI/ML engineer in Istanbul, Turkey. He builds and deploys production ML and
-LLM systems, runs the infrastructure under them, and teaches teams to use and maintain them. He has
+Muhammed Berk Önder is an AI/ML engineer in Istanbul, Turkey. Berk builds and deploys production ML and
+LLM systems, runs the infrastructure under them, and teaches teams to use and maintain them. Berk has
 worked in telecommunications and in software/mobile apps since 2022.
 
 ## Summary
@@ -16,7 +16,7 @@ processing and data pipelines. Strong in Python, Docker, Git, Airflow, GCP and m
 (LangChain, Ollama, llama.cpp, LiteLLM). M.Sc. in physics.
 
 With LLMs, Berk has built a RAG assistant over internal data (Teknasyon), a telco LLM assistant
-(P.I. Works), and his own production LLM service, which runs this assistant (see Projects).
+(P.I. Works), and a production LLM service of Berk's own, which runs this assistant (see Projects).
 
 ## Services
 
@@ -80,7 +80,7 @@ company's own servers so that sensitive data never leaves them.
 
 ## Projects
 
-### A production LLM service on his own GPU
+### A production LLM service on Berk's own GPU
 
 An open model (Qwen3.5 9B) served by llama.cpp behind LiteLLM on Berk's own PC (RTX 3060), with a key
 per client, every request traced in MLflow, speech in and out, and Open WebUI as a chat interface.
@@ -115,7 +115,7 @@ side, each in its own terminal and git worktree, with review, commit and merge i
 
 ## Education
 
-Where Berk studied: İstanbul University, for both degrees. His study was physics: a bachelor's
+Where Berk studied: İstanbul University, for both degrees. The subject was physics: a bachelor's
 degree, then a master's in high energy and plasma physics.
 
 ### M.Sc., High Energy and Plasma Physics, İstanbul University (2024)
@@ -128,6 +128,6 @@ GPA 3.31.
 
 ## Contact and availability
 
-Berk is open to new projects (consulting and training) and to new roles: he's happy to talk with
+Berk is open to new projects (consulting and training) and to new roles, and happy to talk with
 recruiters about ML and MLOps roles and jobs. Email: berkmonder@gmail.com. LinkedIn: linkedin.com/in/berkmonder. GitHub:
 github.com/berkmonder. Website: berkmonder.com. Or leave an email with "Contact Berk" in this chat.
