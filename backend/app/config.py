@@ -1,4 +1,4 @@
-"""Settings, from the environment (on the VPS: hosts/vps/apps.nix, and the turquoise-env secret, both in
+"""Settings, from the environment (on the VPS: hosts/vps/apps.nix and the turquoise-env secret, both in
 nix-dotfiles)."""
 
 from pathlib import Path
@@ -9,26 +9,19 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
-    database_url: str = "sqlite:///./turquoise.db"
+    # The model: LiteLLM on Berk's PC (nix-dotfiles hosts/desktop/llm), over Tailscale. Empty: quick
+    # answers only. Turquoise's key may use only the chat models, a few requests at a time.
+    llm_url: str = ""  # e.g. http://100.76.197.63:8000
+    llm_key: str = ""
+    llm_model: str = "default"  # the PC's chat model, by the name that stays when the model changes
 
-    # The GPU side: Alperen (github.com/berkmonder/alperen) on Berk's PC, over Tailscale. Empty: always
-    # the fallback. Its key may use only the base model, a few requests at a time, and isn't learned from.
-    alperen_url: str = ""  # e.g. http://100.76.197.63:8000
-    alperen_key: str = ""
-    alperen_model: str = "qwen3.5-9b"  # the base model: the same answers every time, not the learned one
-
-    # Chronos-Bolt, exported to ONNX when the image is built (scripts/export_chronos.py). Missing (a local
-    # run without the export): the anomaly demo uses its autoregression.
-    forecaster_model: Path = Path("/opt/chronos/chronos.onnx")
-    forecaster_threads: int = 2  # of the server's CPU
-
-    # Where a "contact Berk" request goes: his phone (ntfy). Empty: stored only.
-    ntfy_url: str = ""
-
+    # What the agent searches: Berk's CV, and the website's pages (from its sitemap, re-read hourly).
     profile_path: Path = Path(__file__).resolve().parent.parent / "profile" / "cv.md"
-    embedding_model: str = "BAAI/bge-small-en-v1.5"
+    site_url: str = "https://berkmonder.com"  # empty: no website search
+    site_refresh_s: int = 3600
+    embedding_model: str = "BAAI/bge-small-en-v1.5"  # empty: search by words only
 
-    # Limits for the public: a visitor, everyone together, and what's kept.
+    # Limits for the public: one visitor, everyone together, one answer.
     gpu_concurrency: int = 3  # the engine has 4 slots: one stays free for Berk
     queue_max: int = 12
     queue_wait_s: float = 25.0
@@ -36,8 +29,8 @@ class Settings(BaseSettings):
     chat_window_s: int = 300
     gpu_chats_per_day: int = 500
     message_max_chars: int = 800
-    history_max_messages: int = 12
-    retention_days: int = 90
+    history_max_messages: int = 24
+    agent_max_requests: int = 6  # model calls for one answer, tool rounds included
 
 
 settings = Settings()

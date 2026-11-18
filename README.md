@@ -1,19 +1,16 @@
 # Turquoise
 
-**Production ML, live:** https://turquoise.berkmonder.com
+**Berk's assistant:** an agent that answers questions about Berk's work, services and experience, on
+[berkmonder.com](https://berkmonder.com) (the chat in the corner of every page, and full-size at
+[berkmonder.com/turquoise](https://berkmonder.com/turquoise/)).
 
-Live demos of production ML systems you can use, each with a panel that shows every request moving
-through the system as it happens:
-
-- **Ask about Berk** (`/ask`): an LLM agent that knows Berk's CV, for recruiters. It runs on Berk's home
-  GPU and serves several visitors in one batch, queueing the rest. When the GPU isn't available, a
-  search over the CV answers instead (no AI), and every answer says which one served it. Interested
-  visitors can leave their email; Berk's phone hears at once.
-- **Live anomaly detection** (`/anomaly`): a smooth, never-repeating signal streams in; every second a
-  forecasting model (Chronos-Bolt on the GPU, or a robust autoregression on the server) draws a band of
-  what's normal. Visitors click anywhere to add a point and see it judged, live, by everyone watching.
-- **The API** (`/developers`, reference at `/api/docs`): ask the agent, or find anomalies in your own
-  series.
+- **An agent with tools and RAG.** Built with [Pydantic AI](https://ai.pydantic.dev). It searches Berk's
+  CV (`search_profile`) and the website itself (`search_site`), checks what's up (`get_status`), and
+  answers only from what it found.
+- **It shows its work.** The chat streams every step: the model's thinking, each tool call with what came
+  back, then the answer. Thinking and tool calls are collapsed lines you can open, as in a coding agent.
+- **On Berk's own GPU.** The model (Qwen3.5 9B) runs on Berk's PC behind LiteLLM, which traces every call
+  in MLflow. When the PC is off or busy, the same agent gives quick answers from search alone, and says so.
 
 How it's built and why: [docs/architecture.md](docs/architecture.md).
 
@@ -21,33 +18,42 @@ How it's built and why: [docs/architecture.md](docs/architecture.md).
 
 | Path | What |
 |---|---|
-| `backend/` | the API (FastAPI, Python 3.12, uv): `app/chat/` the agent, its queue and fallback search; `app/anomaly/` the stream, forecasts and detection; `app/live.py` the pipeline feed |
-| `backend/profile/cv.md` | **Berk's CV**, the agent's only knowledge (and the fallback's). Keep its `##`/`###` headings: the search cuts it into sections there |
-| `backend/tests/` | `uv run pytest` |
-| `frontend/` | the web app (Vite, React, TypeScript): `src/pages/` the pages, `src/components/Pipeline.tsx` the live panel, `src/pipelines.ts` what each box does |
-| `.github/workflows/` | `api.yml` and `web.yml`: checks, then on `main` build, smoke-test and push the images to the VPS |
+| `backend/app/agent.py` | the agent: its instructions, tools and models (the GPU, and the quick-answer stand-in) |
+| `backend/app/main.py` | the API: `POST /api/chat` (limits, the GPU queue, then the agent's stream), `GET /api/status` |
+| `backend/app/search.py`, `site.py` | the RAG: sections of the CV and of the website's pages, searched by words and meaning |
+| `backend/profile/cv.md` | **Berk's CV**, one of the agent's two sources. Keep its `##`/`###` headings: search cuts it there |
+| `frontend/src/` | the chat (React, the Vercel AI SDK's `useChat`), built into one script: `/widget/turquoise.js` |
+| `.github/workflows/` | `api.yml` and `web.yml`: checks, then on `main` build, smoke-test and publish the images |
 
 ## Run it locally
 
 ```bash
 cd backend && uv sync && uv run uvicorn app.main:app --port 8000   # settings: ../.env.example
-cd frontend && npm install && npm run dev                            # http://localhost:5173, /api goes to :8000
+cd frontend && npm install && npm run dev                            # http://localhost:5173: a playground
 ```
 
-Without Alperen the chat answers from the CV search: to use Berk's GPU, set `ALPEREN_URL` and
-`ALPEREN_KEY` (on the PC: `podman exec alperen alperen keys add turquoise --model qwen3.5-9b
---concurrency 3 --no-learning`). The anomaly demo forecasts with Chronos-Bolt when its ONNX export is at
-`FORECASTER_MODEL` (the image has it; locally: `backend/scripts/export_chronos.py`), with its robust
-autoregression otherwise.
+The playground shows the chat inline; `?bubble` shows it as the corner button. Without `LLM_URL` and
+`LLM_KEY` (turquoise's key at the PC's LiteLLM, in nix-dotfiles' `hosts/desktop/secrets.yaml`) every
+answer is a quick answer.
+
+**Change what it does:** add a tool in `agent.py` (a typed Python function with a docstring: the model
+sees both); the chat shows it like the others (give it labels in `frontend/src/Parts.tsx`).
+
+## Put it on a page
+
+```html
+<script type="module" src="/widget/turquoise.js"></script>
+```
+
+That's the bottom-right button. A `<div data-turquoise-inline></div>` on the page shows the chat there
+instead, and any link to `#ask` opens the button's chat. It takes its colors and fonts from the page
+(Starlight's variables), and calls `/api` on the page's own domain.
 
 ## Deploy
 
-Push to `main`: CI checks it (ruff, ty, tests), builds the images, starts each one and checks it
-answers, then publishes it to GitHub's registry (`ghcr.io/berkmonder/turquoise`, `turquoise-web`). The
-VPS copies each new version into its own registry and runs it within about 4 minutes, and goes back to
-the previous image if it isn't healthy.
-
-How it runs on the VPS (domain, environment, secrets, health check) is in
-[nix-dotfiles](https://github.com/berkmonder/nix-dotfiles): `hosts/vps/apps.nix`, entries `turquoise`
-(the API) and `turquoise-web` (this web app). The GPU side is [Alperen](https://github.com/berkmonder/alperen)
-on Berk's PC: its base model, through a key that may use nothing else and isn't learned from.
+Push to `main`: CI checks it (ruff, ty, tests; type-check and build), builds the images, starts each one
+and checks it answers, then publishes it to GitHub's registry (`ghcr.io/berkmonder/turquoise`,
+`turquoise-web`). The VPS runs each new version within about 4 minutes and goes back to the previous
+image if it isn't healthy. On the VPS (nix-dotfiles: `hosts/vps/apps.nix`), berkmonder.com sends `/api`
+to the API and `/widget` to the chat's files; turquoise.berkmonder.com redirects to
+berkmonder.com/turquoise.

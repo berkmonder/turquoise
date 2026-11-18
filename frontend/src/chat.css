@@ -1,0 +1,457 @@
+/* The chat's look. Colors and fonts come from the page it's on (berkmonder.com's Starlight variables),
+   with fallbacks so it also looks right on a plain page. Every class starts with `tq-`. */
+
+.tq {
+  --tq-bg: var(--sl-color-black, #0e0e0e);
+  --tq-surface: var(--sl-color-gray-6, #171717);
+  --tq-border: var(--sl-color-gray-5, #2a2a2a);
+  --tq-text: var(--sl-color-gray-1, #e0e0e0);
+  --tq-strong: var(--sl-color-white, #f2f2f2);
+  --tq-muted: var(--sl-color-gray-3, #8a8a8a);
+  --tq-accent: var(--sl-color-text-accent, #7ae6da);
+  --tq-accent-bg: var(--sl-color-accent-low, #0f2e2c);
+  --tq-font: var(--sl-font, ui-sans-serif, system-ui, sans-serif);
+  --tq-mono: var(--sl-font-mono, ui-monospace, monospace);
+  font-family: var(--tq-font);
+  color: var(--tq-text);
+  line-height: 1.5;
+}
+
+.tq *,
+.tq *::before,
+.tq *::after {
+  box-sizing: border-box;
+}
+
+.tq-icon {
+  width: 1.15rem;
+  height: 1.15rem;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* The chat itself */
+
+.tq-chat {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 24rem;
+  background: var(--tq-bg);
+  border: 1px solid var(--tq-border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+[data-turquoise-inline] .tq-chat {
+  height: min(40rem, 80vh);
+}
+
+.tq-head {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid var(--tq-border);
+}
+
+.tq-title {
+  flex: 1;
+  min-width: 0;
+}
+
+.tq-title h2 {
+  margin: 0;
+  font: 500 0.95rem var(--tq-mono);
+  color: var(--tq-strong);
+  letter-spacing: 0;
+}
+
+.tq-title p {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--tq-muted);
+}
+
+.tq-dot {
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 50%;
+  background: var(--tq-muted);
+  flex: none;
+}
+
+.tq-dot.gpu {
+  background: #3ecf8e;
+}
+
+.tq-dot.quick {
+  background: #e2b33d;
+}
+
+.tq-dot.offline {
+  background: #e5534b;
+}
+
+.tq-icon-button {
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--tq-muted);
+  cursor: pointer;
+}
+
+.tq-icon-button:hover {
+  background: var(--tq-surface);
+  color: var(--tq-strong);
+}
+
+.tq-messages {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem;
+}
+
+.tq-message {
+  max-width: 88%;
+  font-size: 0.9rem;
+  overflow-wrap: anywhere;
+}
+
+.tq-message.user {
+  align-self: flex-end;
+  padding: 0.55rem 0.85rem;
+  border-radius: 14px 14px 4px 14px;
+  background: var(--tq-accent-bg);
+  color: var(--tq-strong);
+  white-space: pre-wrap;
+}
+
+.tq-message.assistant {
+  align-self: flex-start;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.tq-message.assistant > p,
+.tq-text {
+  padding: 0.55rem 0.85rem;
+  border-radius: 14px 14px 14px 4px;
+  background: var(--tq-surface);
+}
+
+.tq-message.assistant > p {
+  margin: 0;
+}
+
+.tq-text > * {
+  margin: 0;
+}
+
+.tq-text > * + * {
+  margin-top: 0.5rem;
+}
+
+.tq-text ul,
+.tq-text ol {
+  padding-left: 1.2rem;
+}
+
+.tq-text li + li {
+  margin-top: 0.2rem;
+}
+
+.tq-text a {
+  color: var(--tq-strong);
+  text-underline-offset: 0.2em;
+}
+
+.tq-text blockquote {
+  margin-left: 0;
+  padding-left: 0.75rem;
+  border-left: 2px solid var(--tq-border);
+  color: var(--tq-muted);
+}
+
+.tq-text code {
+  font-family: var(--tq-mono);
+  font-size: 0.85em;
+}
+
+/* Steps: thinking and tool calls, collapsed lines like a harness shows them */
+
+.tq-step summary {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.45rem;
+  padding: 0.2rem 0;
+  font: 0.8rem var(--tq-mono);
+  color: var(--tq-muted);
+  cursor: pointer;
+  list-style: none;
+}
+
+.tq-step summary::-webkit-details-marker {
+  display: none;
+}
+
+.tq-step summary::after {
+  content: "▸";
+  margin-left: 0.1rem;
+}
+
+.tq-step[open] summary::after {
+  content: "▾";
+}
+
+.tq-step summary:hover {
+  color: var(--tq-strong);
+}
+
+.tq-step summary .tq-icon {
+  width: 0.95rem;
+  height: 0.95rem;
+  margin-top: 0.05rem;
+}
+
+.tq-step summary code {
+  margin-left: 0.4rem;
+  padding: 0 0.3rem;
+  border-radius: 4px;
+  background: var(--tq-surface);
+  color: var(--tq-text);
+  font-size: 0.75rem;
+}
+
+.tq-live span {
+  background: linear-gradient(90deg, var(--tq-muted) 30%, var(--tq-strong) 50%, var(--tq-muted) 70%);
+  background-size: 200% 100%;
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  animation: tq-shimmer 1.6s linear infinite;
+}
+
+.tq-live span code {
+  color: var(--tq-text);
+}
+
+@keyframes tq-shimmer {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: -100% 0;
+  }
+}
+
+.tq-step-body {
+  margin: 0.25rem 0 0.4rem 0.5rem;
+  padding-left: 0.85rem;
+  border-left: 1px solid var(--tq-border);
+  font-size: 0.8rem;
+  color: var(--tq-muted);
+}
+
+.tq-step-body p {
+  margin: 0;
+}
+
+.tq-thought {
+  white-space: pre-wrap;
+  font-style: italic;
+}
+
+.tq-found + .tq-found {
+  margin-top: 0.6rem;
+}
+
+.tq-found h4 {
+  margin: 0 0 0.15rem;
+  font: 500 0.78rem var(--tq-mono);
+  color: var(--tq-text);
+}
+
+.tq-found p {
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  white-space: pre-line;
+}
+
+.tq-page {
+  margin-left: 0.5rem;
+  color: var(--tq-accent);
+  text-decoration: none;
+}
+
+.tq-status {
+  margin: 0;
+  padding-left: 1rem;
+}
+
+.tq-waiting {
+  font: 0.8rem var(--tq-mono);
+  color: var(--tq-muted);
+  animation: tq-blink 1.2s ease-in-out infinite;
+}
+
+@keyframes tq-blink {
+  50% {
+    opacity: 0.4;
+  }
+}
+
+.tq-suggestions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.4rem;
+}
+
+.tq-suggestions button {
+  padding: 0.4rem 0.75rem;
+  border: 1px solid var(--tq-border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--tq-text);
+  font: inherit;
+  font-size: 0.82rem;
+  text-align: start;
+  cursor: pointer;
+}
+
+.tq-suggestions button:hover {
+  border-color: var(--tq-accent);
+  color: var(--tq-strong);
+}
+
+.tq-error {
+  margin: 0;
+  font-size: 0.82rem;
+  color: #e5534b;
+}
+
+.tq-input {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  border-top: 1px solid var(--tq-border);
+}
+
+.tq-input textarea {
+  flex: 1;
+  max-height: 7rem;
+  padding: 0.5rem 0.65rem;
+  border: 1px solid var(--tq-border);
+  border-radius: 8px;
+  background: var(--tq-bg);
+  color: var(--tq-strong);
+  font: inherit;
+  font-size: 0.9rem;
+  resize: none;
+  field-sizing: content;
+}
+
+.tq-input textarea:focus {
+  outline: none;
+  border-color: var(--tq-accent);
+}
+
+.tq-send {
+  display: grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border: 0;
+  border-radius: 8px;
+  background: var(--tq-strong);
+  color: var(--tq-bg);
+  cursor: pointer;
+}
+
+.tq-send:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+/* The bubble: one button in the corner opens and closes the chat above it */
+
+.tq-bubble {
+  position: fixed;
+  right: 1.25rem;
+  bottom: 1.25rem;
+  z-index: 50;
+}
+
+.tq-launcher {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: auto;
+  padding: 0.8rem 1.1rem;
+  border: 0;
+  border-radius: 999px;
+  background: var(--tq-accent);
+  color: var(--tq-bg);
+  font: 500 0.9rem var(--tq-mono);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.3);
+  cursor: pointer;
+}
+
+.tq-launcher:hover {
+  filter: brightness(1.08);
+}
+
+.tq-panel {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 0.75rem);
+  width: min(26rem, calc(100vw - 2.5rem));
+  height: min(38rem, calc(100dvh - 7rem));
+  box-shadow: 0 16px 48px rgb(0 0 0 / 0.35);
+  border-radius: 12px;
+}
+
+/* Phones: the chat fills the screen above the button */
+@media (max-width: 40rem) {
+  .tq-bubble {
+    right: 1rem;
+    bottom: 1rem;
+  }
+  .tq-launcher span {
+    display: none;
+  }
+  .tq-panel {
+    position: fixed;
+    inset: 0 0 auto 0;
+    width: auto;
+    height: calc(100dvh - 5.25rem);
+    border-radius: 0;
+  }
+  .tq-panel .tq-chat {
+    border-width: 0 0 1px;
+    border-radius: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tq-live span,
+  .tq-waiting {
+    animation: none;
+  }
+}

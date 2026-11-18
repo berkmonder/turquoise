@@ -1,54 +1,129 @@
 # Berk Önder
 
-<!-- PLACEHOLDER: replace this whole file with the real CV. Keep the headings (## and ###): the chat's
-fallback search cuts the CV into sections at them, and shows a matching section as it is. -->
+<!-- The assistant's only knowledge (and the fallback search's). Keep the headings (## and ###): the
+search cuts this file into sections at them, and shows a matching section as it is. Source: Berk's CV
+(berkmonder.com/files/resume_muhammedBerkOnder.pdf) and the services on berkmonder.com. -->
 
-Machine learning engineer focused on taking models to production: LLM systems, time-series and
-MLOps. Based in Istanbul, Turkey. Open to remote roles.
+Muhammed Berk Önder is an AI/ML engineer in Istanbul, Turkey. Berk builds and deploys production ML and
+LLM systems, runs the infrastructure under them, and teaches teams to use and maintain them. Berk has
+worked in telecommunications and in software/mobile apps since 2022.
 
 ## Summary
 
-ML engineer who builds the whole path from data to a running service: training, evaluation,
-serving, monitoring and the infrastructure under it. Comfortable owning a system end to end.
+AI/ML engineer with experience building, deploying and scaling production ML and LLM systems.
+Specialized in LLM-powered systems (RAG assistants, agents), anomaly detection, large-scale data
+processing and data pipelines. Strong in Python, Docker, Git, Airflow, GCP and modern LLM tools
+(LangChain, Ollama, llama.cpp, LiteLLM). M.Sc. in physics.
+
+With LLMs, Berk has built a RAG assistant over internal data (Teknasyon), a telco LLM assistant
+(P.I. Works), and a production LLM service of Berk's own, which runs this assistant (see Projects).
+
+## Services
+
+Berk offers consulting, hands-on builds and team training, in Turkish or English, remotely or on-site
+in Istanbul. Details: berkmonder.com/services.
+
+### LLM and agent systems
+
+Assistants that answer from a company's own data, and agents that use its tools, with evaluation and
+tracing from day one, on cloud APIs or self-hosted models. Typical work: retrieval-augmented
+assistants over documents and databases, agents calling internal tools and APIs with guardrails,
+evaluation sets and tracing, and choosing between cloud APIs and self-hosted models for privacy,
+latency and cost.
+
+### ML infrastructure and MLOps
+
+Pipelines (Airflow, Dataform, Prefect) on GCP or a company's own servers, experiment tracking and a
+model registry with MLflow, CI/CD that makes every model a versioned and reproducible artifact,
+serving, monitoring and alerting, and keeping GPU and cloud costs under control.
+
+### Training for teams
+
+Hands-on workshops on a company's own use cases, from half a day to several days: LLMs and NLP for
+engineers (embeddings, retrieval, evaluation), building agents (tools, memory, safety), practical AI
+for every team (using assistants well and safely), and MLOps fundamentals. The team keeps the
+material.
+
+### How an engagement works
+
+A free 30-minute intro call; then a short written proposal with scope, deliverables, timeline and a
+fixed price; then work in small steps with regular check-ins; and a handover with documentation and a
+walkthrough, so the team can run it without Berk. Cost: each engagement has a fixed price, set in
+the proposal after the free intro call, so ask Berk for a quote. Berk signs NDAs, and can set up open models on a
+company's own servers so that sensitive data never leaves them.
 
 ## Experience
 
-### ML Engineer, Example Company (2024 – present)
+### MLOps Engineer, Teknasyon (August 2024 – present)
 
-- Built and operated an LLM-based assistant serving internal teams, with evaluation suites and
-  monitoring.
-- Moved batch scoring jobs to a scheduled, monitored pipeline.
+- Designed and deployed a modular RAG-based LLM system with LangChain and Open WebUI, for
+  high-precision retrieval from structured internal data through custom Python pipelines and tools.
+- Scaled a production spam detection pipeline handling millions of records a week by segmenting the
+  data processing, removing memory bottlenecks and improving stability.
+- Built automated data pipelines for anomaly detection with Dataform and Airflow on GCP, for
+  high-cardinality event data across thousands of dimensions.
+- Integrated MLflow into Airflow pipelines to standardize experiment tracking and reproducibility.
+- Optimized fine-tuning of ~30B-parameter Qwen models on RunPod, cutting training time and cost
+  through better GPU utilization.
+- Implemented CI/CD with GitHub, Cloud Build and Docker for versioned model artifacts and
+  reproducible deployments; containerized ML and LLM services.
 
-### Data Scientist, Another Company (2022 – 2024)
+### Machine Learning Engineer, P.I. Works (July 2022 – July 2024)
 
-- Forecasting and anomaly detection on time-series data for product metrics.
-- Dashboards and alerting for model drift.
+- Built a telco LLM assistant with LangChain: knowledge-base retrieval, SQL data access, analysis and
+  visualization in one interface.
+- Developed a heatmap forecasting system with regression models that predicts network traffic from
+  football match data, reducing aggregate error from 77% to 0.75%.
+- Implemented multivariate anomaly detection on streaming time series with clustering.
+- Designed a synthetic data generation framework with Monte Carlo methods, increasing data
+  granularity 60 times.
 
 ## Projects
 
-### Turquoise (this site)
+### A production LLM service on Berk's own GPU
 
-Live demos of production ML systems: an LLM agent served from a home GPU with batching and a search
-fallback, and real-time anomaly detection on a streaming signal.
+An open model (Qwen3.5 9B) served by llama.cpp behind LiteLLM on Berk's own PC (RTX 3060), with a key
+per client, every request traced in MLflow, speech in and out, and Open WebUI as a chat interface.
+This assistant, Turquoise, runs on it: a Pydantic AI agent that searches this profile and berkmonder.com
+(berkmonder.com/turquoise). When the GPU is off, it gives quick answers from search alone.
 
-### Alperen
+### Three machines as code
 
-A self-hosted LLM platform built from standard parts (llama.cpp, LiteLLM, Open WebUI, Windmill,
-Prometheus and Grafana) with agents, automations and a fine-tuning loop.
+Berk's laptop, GPU workstation and cloud server are all configured with Nix in one repository:
+pull-based deploys, encrypted secrets, nightly off-site backups and uptime checks
+(berkmonder.com/status).
+
+### Hive
+
+An open-source desktop command center for AI coding agents: Claude Code, Codex and Gemini side by
+side, each in its own terminal and git worktree, with review, commit and merge in one place
+(github.com/berkmonder/hive).
 
 ## Skills
 
-- Languages: Python, SQL, Odin
-- ML: PyTorch, scikit-learn, time-series forecasting, anomaly detection, LLM fine-tuning (LoRA)
-- Serving and MLOps: FastAPI, llama.cpp, LiteLLM, Docker and Podman, CI/CD, Prometheus, Grafana
-- Infrastructure: Linux, NixOS, Terraform, Tailscale
+- Programming: Python, SQL, Bash
+- LLMs: LangChain, LangGraph, llama.cpp, vLLM, Ollama, LM Studio, LiteLLM, Hugging Face, Unsloth
+- Machine learning: scikit-learn, PyTorch, TensorFlow, PySpark, MLflow, time series, anomaly detection
+- Python libraries: Pandas, Polars, NumPy, Matplotlib, Plotly, Typer, NetworkX
+- MLOps and infrastructure: Git, Docker, Podman, CI/CD, FastAPI, Airflow, Prefect, GCP, RunPod, Linux,
+  uv, Nix
+- Languages: Turkish (native), English (proficient)
 
 ## Education
 
-### BSc, Example University (2018 – 2022)
+Where Berk studied: İstanbul University, for both degrees. The field of study was physics: a bachelor's
+degree, then a master's in high energy and plasma physics.
 
-Placeholder degree.
+### M.Sc., High Energy and Plasma Physics, İstanbul University (2024)
 
-## Looking for
+GPA 3.63.
 
-Machine learning or MLOps engineering roles where models go to production. Remote or Istanbul.
+### B.Sc., Physics, İstanbul University (2021)
+
+GPA 3.31.
+
+## Contact and availability
+
+Berk is open to new projects (consulting and training) and to new roles, and happy to talk with
+recruiters about ML and MLOps roles and jobs. Email: berkmonder@gmail.com. LinkedIn: linkedin.com/in/berkmonder. GitHub:
+github.com/berkmonder. Website: berkmonder.com. Or leave an email with "Contact Berk" in this chat.
