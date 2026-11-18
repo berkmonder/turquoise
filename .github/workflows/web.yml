@@ -1,5 +1,6 @@
-# The web app (frontend/): on every push to main that touches it, build its image, start it and check
-# it answers (as the server will), then publish it to GitHub's registry (ghcr.io/berkmonder/turquoise-web).
+# The chat (frontend/): on pushes and pull requests it must type-check and build; on main, its image is
+# then built, started and checked (as the server will), and published to GitHub's registry
+# (ghcr.io/berkmonder/turquoise-web).
 # The VPS copies each new version into its own registry, runs it within ~4 minutes and goes back to the
 # previous image if it doesn't get healthy there.
 name: web
@@ -7,17 +8,36 @@ on:
   push:
     branches: [main]
     paths: [frontend/**, .github/workflows/web.yml]
+  pull_request:
+    paths: [frontend/**, .github/workflows/web.yml]
   workflow_dispatch:
 permissions:
   contents: read
-  packages: write # publish the image (with this run's own token; nothing stored)
-concurrency:
-  group: deploy-web
 env:
   IMAGE: ghcr.io/berkmonder/turquoise-web
 jobs:
-  deploy:
+  checks:
     runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - run: npm ci --no-audit --no-fund
+      - name: type-check and build
+        run: npm run build
+  deploy:
+    needs: checks
+    if: github.event_name != 'pull_request'
+    concurrency:
+      group: deploy-web
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write # publish the image (with this run's own token; nothing stored)
     steps:
       - uses: actions/checkout@v5
       - name: Build
@@ -29,7 +49,7 @@ jobs:
         run: |
           podman run -d --name smoke "$IMAGE:latest"
           for _ in $(seq 30); do
-            podman exec smoke wget -q --spider http://127.0.0.1:80/ && exit 0
+            podman exec smoke wget -q --spider http://127.0.0.1:80/widget/turquoise.js && exit 0
             sleep 2
           done
           podman logs smoke

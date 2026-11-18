@@ -3,12 +3,55 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Production ML, live: chat with Berk's agent served from his home GPU, and watch real-time anomaly detection. Every step of the pipeline is visible." />
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='16' cy='16' r='12' fill='%232dd4bf'/></svg>" />
-    <title>Turquoise · production ML, live</title>
+    <title>Turquoise · playground</title>
+    <style>
+      /* A stand-in for berkmonder.com: the variables the chat reads from the page. */
+      :root {
+        color-scheme: dark;
+        --sl-color-black: #0e0e0e;
+        --sl-color-gray-6: #171717;
+        --sl-color-gray-5: #2a2a2a;
+        --sl-color-gray-3: #8a8a8a;
+        --sl-color-gray-1: #e0e0e0;
+        --sl-color-white: #f2f2f2;
+        --sl-color-text-accent: #7ae6da;
+        --sl-color-accent-low: #0f2e2c;
+      }
+      @media (prefers-color-scheme: light) {
+        :root {
+          color-scheme: light;
+          --sl-color-black: #ffffff;
+          --sl-color-gray-6: #f3f3f3;
+          --sl-color-gray-5: #e0e0e0;
+          --sl-color-gray-3: #666666;
+          --sl-color-gray-1: #222222;
+          --sl-color-white: #111111;
+          --sl-color-text-accent: #0e7c73;
+          --sl-color-accent-low: #dff3f0;
+        }
+      }
+      body {
+        margin: 0;
+        padding: 2rem 1rem;
+        background: var(--sl-color-black);
+        color: var(--sl-color-gray-1);
+        font-family: system-ui, sans-serif;
+      }
+      main {
+        max-width: 46rem;
+        margin: 0 auto;
+      }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
+    <main>
+      <h1>Turquoise playground</h1>
+      <p>The chat inline, as on berkmonder.com/turquoise. Add <code>?bubble</code> to the address for the corner button instead.</p>
+      <div id="inline"></div>
+    </main>
+    <script>
+      if (!location.search.includes("bubble")) document.getElementById("inline").setAttribute("data-turquoise-inline", "");
+    </script>
+    <script type="module" src="/src/turquoise.ts"></script>
   </body>
 </html>

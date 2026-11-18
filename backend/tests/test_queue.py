@@ -2,7 +2,7 @@ import asyncio
 
 import pytest
 
-from app.chat.queue import QueueFull, SlotQueue
+from app.queue import QueueFull, SlotQueue
 
 
 async def take(queue: SlotQueue, timeout: float = 5.0) -> list[int]:

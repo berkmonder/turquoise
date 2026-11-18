@@ -1,54 +1,35 @@
-"""Turquoise's API: the chat with Berk's agent, the live anomaly demo, the pipeline feed, and the public
-API (/api/v1, documented at /api/docs). One process: limits, the queue and the live feed are in memory."""
+"""Turquoise's API. /api/chat runs the agent and streams every step of it in the Vercel AI SDK's
+message-stream format (the chat in `frontend/` reads it with the SDK's `useChat`). /api/status says
+whether Berk's GPU is on. One process: limits and the queue are in memory."""
 
 import asyncio
 import contextlib
-import logging
+import json
 import re
 from collections.abc import AsyncIterator
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import Response, StreamingResponse
+from pydantic_ai.ui.vercel_ai import VercelAIAdapter
+from pydantic_ai.usage import UsageLimits
 
-from . import contact, db, gpu, live
-from .anomaly import routes as anomaly
-from .anomaly.engine import AnomalyDemo
-from .chat import routes as chat
-from .chat.search import ProfileSearch
+from . import gpu, site
+from .agent import agent, gpu_model, quick_model
 from .config import settings
+from .limits import visitor
+from .queue import QueueFull
+from .search import SearchIndex, sections
 from .state import state
-
-log = logging.getLogger("turquoise")
-
-
-async def forget_every_day() -> None:
-    while True:
-        deleted = await asyncio.to_thread(db.forget_old, settings.retention_days)
-        if deleted:
-            log.info("retention: deleted %d rows older than %d days", deleted, settings.retention_days)
-        await asyncio.sleep(24 * 3600)
 
 
 @contextlib.asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
-    for attempt in range(1, 11):  # Postgres may still be starting
-        try:
-            await asyncio.to_thread(db.init_db)
-            break
-        except Exception as error:  # noqa: BLE001
-            if attempt == 10:
-                raise
-            log.warning("database not ready (%s), retrying", error)
-            await asyncio.sleep(2 * attempt)
     # Without HTML comments: the file's own notes aren't part of the profile.
-    state.profile = re.sub(r"<!--.*?-->", "", settings.profile_path.read_text(encoding="utf-8"),
-                           flags=re.S)
-    state.search = ProfileSearch(state.profile, settings.embedding_model or None)
-    anomaly.demo = AnomalyDemo(state.chronos)
-    tasks = [
-        asyncio.create_task(gpu.watch([state.llm])),
-        asyncio.create_task(anomaly.demo.run()),
-        asyncio.create_task(forget_every_day()),
-    ]
+    profile = re.sub(r"<!--.*?-->", "", settings.profile_path.read_text(encoding="utf-8"), flags=re.S)
+    state.profile = SearchIndex(sections(profile), settings.embedding_model or None)
+    tasks = [asyncio.create_task(gpu.watch([state.llm]))]
+    if settings.site_url:
+        tasks.append(asyncio.create_task(site.keep_fresh()))
     try:
         yield
     finally:
@@ -57,18 +38,81 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
         await state.client.aclose()
 
 
-app = FastAPI(
-    title="Turquoise API",
-    version="2.0.0",
-    description="Ask about Berk, and find anomalies in a series. Heavy work runs on Berk's GPU "
-    "when it's available; otherwise a lighter fallback answers, and every reply says which.",
-    lifespan=lifespan,
-    docs_url="/api/docs",
-    redoc_url=None,
-    openapi_url="/api/openapi.json",
-)
-for module in (chat, anomaly, contact, live):
-    app.include_router(module.router)
+app = FastAPI(title="Turquoise", version="3.0.0", lifespan=lifespan,
+              docs_url="/api/docs", redoc_url=None, openapi_url="/api/openapi.json")
+
+
+def check(body: dict) -> None:
+    """A conversation the size of a chat, not a document: so many messages, the last one so long."""
+    messages = body.get("messages") or []
+    if not messages or len(messages) > settings.history_max_messages:
+        raise HTTPException(422, "Start a new conversation: this one is too long.")
+    text = "".join(p.get("text", "") for p in messages[-1].get("parts", []) if p.get("type") == "text")
+    if not text.strip() or len(text) > settings.message_max_chars:
+        raise HTTPException(422, f"Ask in at most {settings.message_max_chars} characters.")
+
+
+async def gpu_turn() -> str | None:
+    """Take a place on the GPU, or say why not (then it's a quick answer)."""
+    if not state.llm.configured:
+        return "not_configured"
+    if not state.llm.available:
+        return "gpu_offline"
+    if not state.gpu_budget.take():
+        return "daily_limit"
+    try:
+        async for _ in state.queue.turn(settings.queue_wait_s):
+            pass
+    except (QueueFull, TimeoutError):
+        return "busy"
+    return None
+
+
+@app.post("/api/chat")
+async def chat(request: Request) -> Response:
+    who = visitor(request)
+    if not state.chat_limit.allow(who):
+        raise HTTPException(429, "Too many messages: try again in a few minutes.",
+                            headers={"Retry-After": str(state.chat_limit.retry_after(who))})
+    try:
+        check(json.loads(await request.body()))
+    except (ValueError, AttributeError) as error:
+        raise HTTPException(422, "Not a chat request.") from error
+
+    reason = await gpu_turn()
+    model = gpu_model() if reason is None else quick_model(reason)
+    try:
+        response = await VercelAIAdapter.dispatch_request(
+            request, agent=agent, model=model, sdk_version=7,
+            usage_limits=UsageLimits(request_limit=settings.agent_max_requests))
+    except BaseException:
+        if reason is None:
+            state.queue.release()
+        raise
+    if reason is None and isinstance(response, StreamingResponse):
+        inner = response.body_iterator
+
+        async def holding_the_slot() -> AsyncIterator[str | bytes | memoryview]:
+            try:
+                async for chunk in inner:
+                    yield chunk
+            finally:  # also when the visitor leaves mid-answer
+                state.queue.release()
+
+        response.body_iterator = holding_the_slot()
+    elif reason is None:
+        state.queue.release()
+    return response
+
+
+@app.get("/api/status")
+async def status() -> dict[str, object]:
+    return {
+        "gpu": {"llm": state.llm.state()},
+        "queue": {"active": state.queue.active, "waiting": state.queue.waiting, "slots": state.queue.slots},
+        "sources": {"profile": len(state.profile.sections) if state.profile else 0,
+                    "site": len(state.site.sections) if state.site else 0},
+    }
 
 
 @app.get("/api/health", include_in_schema=False)

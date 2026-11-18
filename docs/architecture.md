@@ -1,95 +1,76 @@
 # How turquoise works
 
-Two machines. The site and its API run on a small, always-on VPS (2 vCPU, 4 GB). The chat's model runs
-on Berk's PC, which has an RTX 3060 and is often off, asleep or busy with a game. The site must never be
-down because of the PC, so the chat has a fallback on the VPS, and every answer says which one served
-it. The anomaly demo's forecaster, Chronos-Bolt, runs on the VPS itself.
+Two machines. The API runs on a small, always-on VPS (2 vCPU, 4 GB) next to berkmonder.com. The model
+runs on Berk's PC, which has an RTX 3060 and is often off, asleep or busy with a game. The site must
+never break because of the PC, so the agent can also answer without the model, from search alone, and
+says so.
 
 ```mermaid
 flowchart LR
-  visitor(["visitor"])
+  visitor(["visitor on berkmonder.com"])
   subgraph vps["VPS · always on"]
     caddy["Caddy (HTTPS)"]
-    web["web app (static)"]
-    api["Turquoise API (FastAPI)"]
-    search["CV search: BM25 + embeddings"]
-    chronos["Chronos-Bolt (ONNX, CPU)"]
-    ar["robust AR forecaster"]
-    pg[("Postgres: chats, contacts (90 days)")]
+    widget["the chat's files (/widget)"]
+    api["Turquoise API: FastAPI + Pydantic AI"]
+    rag["search: BM25 + embeddings over the CV and the site's pages"]
   end
   subgraph pc["Berk's PC · RTX 3060 · over Tailscale"]
-    gateway["LiteLLM: keys, limits"]
-    llama["llama.cpp: Qwen3.5-9B, 4 slots"]
+    litellm["LiteLLM: keys, limits"]
+    llama["llama.cpp: Qwen3.5 9B"]
+    mlflow["MLflow: every call traced"]
   end
-  phone(["Berk's phone (ntfy)"])
-  visitor --> caddy --> web
+  visitor --> caddy
+  caddy -- "/widget" --> widget
   caddy -- "/api" --> api
-  api -- "GPU available" --> gateway --> llama
-  api -- "fallback" --> search
-  api --> chronos
-  api -- "no model file" --> ar
-  api --> pg
-  api -- "contact" --> phone
+  api -- "tools" --> rag
+  api -- "GPU on" --> litellm --> llama
+  litellm --> mlflow
 ```
 
-## Is the GPU there?
+## One answer
 
-`app/gpu.py` checks the PC's model gateway (LiteLLM's `/health/readiness`) every 5 seconds over Tailscale. When it doesn't answer it's
-*offline*: requests go to the fallback at once, with no waiting for a timeout. Two failed requests in
-a row also take it offline for 30 seconds. (When the model is stopped, for a game, the gateway still
-answers: the failed requests take it offline, and chat uses the fallback.) Both states show on the
-site (the "GPU online / offline" pill) and in the pipeline panel.
+1. The chat (`frontend/`, the Vercel AI SDK's `useChat`) posts the conversation to `/api/chat`.
+2. The API checks the visitor's limit, then whether the GPU can take it: is the PC there, is today's
+   GPU budget left, is there a free slot (the engine answers a few conversations at once; others queue
+   for up to 25 seconds).
+3. Pydantic AI runs the agent and streams it back in the AI SDK's message format (`VercelAIAdapter`):
+   the model's thinking, each tool call and its result, then the answer. The model usually searches
+   first, sometimes twice, and answers from what it found.
+4. The chat shows each step as it arrives: thinking and tool calls as collapsed lines (open them to see
+   the thought, or the sections a search returned), the answer as markdown.
 
-## Demo 1: the agent
+## The tools
 
-- **Knowledge:** `backend/profile/cv.md` and the rules in `app/chat/prompt.py` go with every request:
-  answer only from the CV, say "I don't know" otherwise, talk only about Berk, and suggest "Contact
-  Berk" to anyone interested. A CV fits in the prompt, so there is no retrieval step on the GPU path,
-  and the engine's prompt cache makes the repeated prefix cheap.
-- **Many visitors at once:** llama.cpp runs 4 parallel slots that decode together, one batch per
-  step (continuous batching); turquoise uses 3 and leaves one for Berk. Six simultaneous chats measured:
-  three answered together in about 3.5 s, three queued and done by 6.5 s, all on the GPU. Beyond that,
-  `app/chat/queue.py` keeps a first-come-first-served line (up to 12) and streams each visitor's place.
-  A turn that doesn't come within 25 seconds goes to the fallback.
-- **The fallback:** no language model. The CV is cut into sections at its headings; a question is
-  ranked against them by words (BM25) and by meaning (bge-small sentence embeddings, ONNX on the CPU),
-  and the two rankings are merged with reciprocal rank fusion. The best sections are shown as they
-  are, with why the GPU didn't answer.
-- **Limits:** 10 messages per visitor per 5 minutes, 800 characters each, a daily GPU budget for
-  everyone (500), and a key that can use only the chat model, 3 requests at once. Turquoise keeps conversations for 90 days, as the notice under the chat says, then
-  deletes them.
-- **Contact:** name, email and a message are stored (90 days) and sent to Berk's phone through ntfy.
+- `search_profile(query)`: Berk's CV (`backend/profile/cv.md`), cut into sections at its headings.
+- `search_site(query)`: berkmonder.com. `app/site.py` reads the sitemap at startup and every hour,
+  takes each page's main text and cuts it at its headings, so a new page or blog post is searchable
+  without a deploy. Results carry the page's URL, and answers link to it.
+- `get_status()`: whether the GPU is on, and whether the sites are up (Upptime's checks).
 
-## Demo 2: anomaly detection
+Both searches match a question two ways, by words (BM25) and by meaning (bge-small sentence embeddings
+on the VPS's CPU), and merge the rankings (reciprocal rank fusion).
 
-- **The signal** (`app/anomaly/engine.py`): three sines whose periods relate by the golden ratio, so
-  it never repeats, plus a slow Ornstein-Uhlenbeck wander. Four points a second, the same stream for
-  everyone (server-sent events).
-- **The band:** every second the last 64 seconds are forecast 16 seconds ahead, with an uncertainty
-  for each step. Chronos-Bolt (a pretrained time-series model, chronos-bolt-small) returns quantiles:
-  it runs on the VPS's CPU as ONNX, exported from PyTorch when the image is built
-  (`backend/scripts/export_chronos.py`, checked against the PyTorch pipeline), a few milliseconds a
-  forecast. The fallback, when the model file isn't there, is an AR(12) refitted every second by iteratively reweighted least squares (Huber weights, so
-  outliers barely count), whose band is the wider of its theoretical spread and the errors it really
-  made forecasting its own recent past. Each moment keeps the last forecast made before it.
-- **Detection:** a visitor's point is scored against the band the model had for that moment:
-  z = (value − expected) / σ, an anomaly beyond 3σ. σ never drops below a click's precision. A point
-  placed in the forecast zone waits (shown hollow) until its moment comes, then is judged against the
-  last band drawn before it. Only visitors' points are judged, never the generated signal.
-- **For anyone's data** (`POST /api/v1/anomaly/detect`): each point is compared with a forecast made
-  from the points before it (64 points of warm-up). All windows go to Chronos-Bolt in one batch;
-  with the fallback the series is processed in order and each anomaly is clipped to the band's edge in
-  the history the next forecasts learn from, so one spike doesn't make its neighbours look odd too.
+## When the GPU can't answer
 
-## The pipeline panel
+`app/gpu.py` checks LiteLLM's `/health/readiness` every 5 seconds over Tailscale; when it doesn't answer,
+the GPU counts as off at once, with no waiting for a timeout. Then, or when the budget is used up or the
+queue is full, the agent runs on a stand-in model (`quick_model` in `app/agent.py`, a Pydantic AI
+`FunctionModel`). It calls the same two searches and answers with what they found, quoted, saying why.
+The chat looks the same: the searches show as steps. If the GPU fails in the middle of an answer, a
+`FallbackModel` hands over to the stand-in.
 
-Every step of every request is an event (`app/events.py`): which stage, how long it took, no content.
-`GET /api/live` streams them to everyone watching, with a status snapshot every few seconds;
-`frontend/src/components/Pipeline.tsx` draws each request as a pulse moving through the diagram (your
-own are brighter), and `frontend/src/pipelines.ts` explains each box.
+## Limits
 
-## Running it
+Per visitor, 10 messages in 5 minutes; per day, 500 answers on the GPU; per answer, 6 model calls (tool
+rounds included); per message, 800 characters and 24 messages of history. All in memory: turquoise runs
+as one process. Nothing is stored on the VPS; LiteLLM's traces in MLflow (on the PC) are the record of
+what the model was asked and said.
 
-One process (uvicorn): the queue, the rate limits and the live feed are in memory. CI publishes each
-image to GitHub's registry; the VPS copies new versions into its own registry, Podman there updates
-within a few minutes and rolls back an image that doesn't get healthy. Health is `GET /api/health`; the VPS and an outside check (Upptime) watch it.
+## Why these parts
+
+- **Pydantic AI:** typed tools from plain functions, streaming of every step, a stand-in model for tests
+  and the quick answers, and an adapter for the AI SDK's chat format. Small enough to read.
+- **The Vercel AI SDK's format and `useChat`:** the standard way a chat front end reads an agent's
+  stream, so the chat has no hand-written parser.
+- **One script for the chat:** berkmonder.com stays a static site; the chat is its own app with its own
+  deploy, embedded with one `<script>`.

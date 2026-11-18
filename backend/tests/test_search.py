@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from app.chat.search import ProfileSearch, answer, sections
+from app.search import SearchIndex, Section, quick_answer, sections
 
 CV = (Path(__file__).parent.parent / "profile" / "cv.md").read_text()
 
@@ -12,22 +12,24 @@ def test_sections_follow_headings():
 
 
 def test_words_find_the_right_section():
-    search = ProfileSearch(CV)
-    results, timings = search.search("Does he know PyTorch?")
-    assert results and results[0][0].title == "Skills"
-    assert "bm25" in timings
+    found = SearchIndex(sections(CV)).search("Does Berk know PyTorch?")
+    assert found and found[0].title == "Skills"
 
 
-def test_nothing_relevant_says_so():
-    search = ProfileSearch(CV)
-    results, _ = search.search("zebra migration patterns")
-    assert results == []
-    assert "couldn't find" in answer(results, "gpu_offline")
+def test_questions_land_on_their_section():
+    index = SearchIndex(sections(CV))
+    assert index.search("where did berk study")[0].title == "Education"
+    assert index.search("how much does it cost")[0].title == "Services › How an engagement works"
+    assert index.search("can you train our team on agents")[0].title == "Services › Training for teams"
 
 
-def test_answer_quotes_sections_and_says_why():
-    search = ProfileSearch(CV)
-    results, _ = search.search("anomaly detection experience")
-    text = answer(results, "busy")
+def test_nothing_relevant_finds_nothing():
+    assert SearchIndex(sections(CV)).search("zebra migration patterns") == []
+    assert "couldn't find" in quick_answer([], "gpu_offline")
+
+
+def test_quick_answer_quotes_sections_says_why_and_links_pages():
+    text = quick_answer([Section("Services › Training", "Workshops.", "https://berkmonder.com/services/"),
+                         Section("Skills", "Python")], "busy")
     assert text.startswith("Every GPU slot is taken")
-    assert "> " in text and "Contact Berk" in text
+    assert "> Workshops." in text and "([page](https://berkmonder.com/services/))" in text

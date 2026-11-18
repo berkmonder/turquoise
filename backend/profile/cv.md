@@ -84,12 +84,8 @@ company's own servers so that sensitive data never leaves them.
 
 An open model (Qwen3.5 9B) served by llama.cpp behind LiteLLM on Berk's own PC (RTX 3060), with a key
 per client, every request traced in MLflow, speech in and out, and Open WebUI as a chat interface.
-This assistant runs on it; when the GPU is off, a search over this profile answers instead.
-
-### Live anomaly detection
-
-A live demo on berkmonder.com: a streaming signal, forecast every second by Chronos-Bolt, with each
-point judged against the forecast band.
+This assistant, Turquoise, runs on it: a Pydantic AI agent that searches this profile and berkmonder.com
+(berkmonder.com/turquoise). When the GPU is off, it gives quick answers from search alone.
 
 ### Three machines as code
 

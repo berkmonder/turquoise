@@ -1,14 +1,12 @@
-"""Is Berk's PC there? Each GPU service on it (its model API, for the chat) is checked every few seconds
-over Tailscale. A service that doesn't answer (the PC is off or asleep, the model is stopped for a
-game) or whose requests keep failing is "offline": requests go to the fallback at once, without waiting
+"""Is Berk's PC there? Its model API (LiteLLM, for the agent) is checked every few seconds over
+Tailscale. A service that doesn't answer (the PC is off or asleep, the model is stopped for a
+game) or whose requests keep failing is "offline": answers are quick answers at once, without waiting
 for a timeout, until it answers again."""
 
 import asyncio
 import time
 
 import httpx
-
-from .events import hub
 
 
 class GpuService:
@@ -36,7 +34,6 @@ class GpuService:
         self.failures += 1
         if self.failures >= 2:
             self.paused_until = time.monotonic() + 30
-            self._announce()
 
     async def check(self, client: httpx.AsyncClient) -> None:
         try:
@@ -49,10 +46,6 @@ class GpuService:
             self.last_change = time.time()
             if reachable:
                 self.failures, self.paused_until = 0, 0.0
-            self._announce()
-
-    def _announce(self) -> None:
-        hub.publish({"type": "gpu", "service": self.name, "available": self.available})
 
     def state(self) -> dict[str, object]:
         return {"configured": self.configured, "available": self.available, "since": self.last_change}
