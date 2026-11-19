@@ -19,8 +19,8 @@ def test_words_find_the_right_section():
 def test_questions_land_on_their_section():
     index = SearchIndex(sections(CV))
     assert index.search("where did berk study")[0].title == "Education"
-    assert index.search("how much does it cost")[0].title == "Services › How an engagement works"
-    assert index.search("can you train our team on agents")[0].title == "Services › Training for teams"
+    assert index.search("is berk open to new roles")[0].title == "Contact and availability"
+    assert index.search("what has berk built with LLMs")[0].title == "Summary"
 
 
 def test_nothing_relevant_finds_nothing():
