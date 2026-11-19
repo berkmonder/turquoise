@@ -6,10 +6,10 @@ import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
 import { type FormEvent, type KeyboardEvent, useEffect, useMemo, useRef, useState } from "react";
 import { NewIcon, SendIcon } from "./icons";
+import { pagePath, pageWords, type Words } from "./page";
 import Parts from "./Parts";
 
 const STORE = "turquoise-chat";
-const SUGGESTIONS = ["What does Berk do?", "Can Berk train our team on agents?", "What has Berk built with LLMs?"];
 
 type Saved = { messages: UIMessage[]; thoughts: Record<string, number> };
 
@@ -21,13 +21,13 @@ function load(): Saved {
   return { messages: [], thoughts: {} };
 }
 
-/** "Too many messages…" out of the API's JSON error, or the error's own text. */
-function readable(error: Error): string {
+/** "Too many messages…" out of the API's JSON error, or a sentence of our own. */
+function readable(error: Error, words: Words): string {
   try {
     const detail = JSON.parse(error.message).detail;
     if (typeof detail === "string") return detail;
   } catch {}
-  return "The assistant isn't reachable right now. Try again in a moment.";
+  return words.unreachable;
 }
 
 type Health = "checking" | "gpu" | "quick" | "offline";
@@ -50,7 +50,12 @@ function useHealth(): Health {
 
 export default function Chat({ autoFocus = false }: { autoFocus?: boolean }) {
   const saved = useMemo(load, []);
-  const transport = useMemo(() => new DefaultChatTransport({ api: "/api/chat" }), []);
+  const words = useMemo(pageWords, []);
+  // Every question says which page it was asked on, so the assistant knows what "this page" is.
+  const transport = useMemo(
+    () => new DefaultChatTransport({ api: "/api/chat", headers: () => ({ "X-Turquoise-Page": pagePath() }) }),
+    [],
+  );
   const { messages, sendMessage, setMessages, status, error, clearError, stop } = useChat({
     id: "turquoise",
     messages: saved.messages,
@@ -116,15 +121,10 @@ export default function Chat({ autoFocus = false }: { autoFocus?: boolean }) {
     clearError();
   }
 
-  const subtitle = {
-    checking: "Connecting…",
-    gpu: "Running on Berk's GPU",
-    quick: "Quick answers: Berk's GPU is off",
-    offline: "Offline right now",
-  }[health];
+  const subtitle = words.status[health];
 
   return (
-    <section className="tq tq-chat" aria-label="Chat with Turquoise, Berk's assistant">
+    <section className="tq tq-chat" aria-label={words.dialog}>
       <header className="tq-head">
         <span className={`tq-dot ${health}`} aria-hidden="true" />
         <div className="tq-title">
@@ -132,7 +132,7 @@ export default function Chat({ autoFocus = false }: { autoFocus?: boolean }) {
           <p>{subtitle}</p>
         </div>
         {messages.length > 0 && (
-          <button type="button" className="tq-icon-button" onClick={startOver} aria-label="New conversation" title="New conversation">
+          <button type="button" className="tq-icon-button" onClick={startOver} aria-label={words.newChat} title={words.newChat}>
             <NewIcon />
           </button>
         )}
@@ -140,11 +140,11 @@ export default function Chat({ autoFocus = false }: { autoFocus?: boolean }) {
 
       <div className="tq-messages" ref={list} aria-live="polite">
         <div className="tq-message assistant">
-          <p>Hi! I'm Turquoise, Berk's assistant. Ask me about Berk's work, services or experience.</p>
+          <p>{words.greeting}</p>
         </div>
         {messages.length === 0 && (
           <div className="tq-suggestions">
-            {SUGGESTIONS.map((s) => (
+            {words.suggestions.map((s) => (
               <button type="button" key={s} onClick={() => ask(s)}>
                 {s}
               </button>
@@ -158,12 +158,12 @@ export default function Chat({ autoFocus = false }: { autoFocus?: boolean }) {
             </div>
           ) : (
             <div key={message.id} className="tq-message assistant">
-              <Parts message={message} thoughts={thoughts.current} />
+              <Parts message={message} thoughts={thoughts.current} words={words} />
             </div>
           ),
         )}
-        {status === "submitted" && <div className="tq-message assistant tq-waiting">Thinking…</div>}
-        {error && <p className="tq-error">{readable(error)}</p>}
+        {status === "submitted" && <div className="tq-message assistant tq-waiting">{words.thinking}</div>}
+        {error && <p className="tq-error">{readable(error, words)}</p>}
       </div>
 
       <form className="tq-input" onSubmit={onSubmit}>
@@ -174,10 +174,10 @@ export default function Chat({ autoFocus = false }: { autoFocus?: boolean }) {
           onKeyDown={onKey}
           rows={1}
           maxLength={800}
-          placeholder="Ask about Berk…"
-          aria-label="Your question"
+          placeholder={words.placeholder}
+          aria-label={words.question}
         />
-        <button type="submit" className="tq-send" disabled={busy || !draft.trim()} aria-label="Send">
+        <button type="submit" className="tq-send" disabled={busy || !draft.trim()} aria-label={words.send}>
           <SendIcon />
         </button>
       </form>

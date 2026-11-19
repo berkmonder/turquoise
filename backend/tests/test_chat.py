@@ -2,6 +2,7 @@ import json
 from typing import cast
 
 import pytest
+from fastapi import Request
 from fastapi.testclient import TestClient
 from pydantic_ai.messages import (
     ModelMessage,
@@ -16,6 +17,7 @@ from pydantic_ai.models.function import AgentInfo, FunctionModel
 from app import main
 from app.agent import agent
 from app.main import app
+from app.search import SearchIndex, Section
 from app.state import state
 
 
@@ -67,7 +69,7 @@ def test_the_gpu_path_holds_a_slot_and_gives_it_back(monkeypatch: pytest.MonkeyP
 
     monkeypatch.setattr(type(state.llm), "configured", property(lambda self: True))
     monkeypatch.setattr(type(state.llm), "available", property(lambda self: True))
-    monkeypatch.setattr(main, "gpu_model", lambda: FunctionModel(stream_function=stream))
+    monkeypatch.setattr(main, "gpu_model", lambda page=None: FunctionModel(stream_function=stream))
     with TestClient(app) as client:
         response = client.post("/api/chat", json=ask("Hello"), headers={"x-forwarded-for": "198.51.100.1"})
         text = "".join(c["delta"] for c in chunks(response.text) if c["type"] == "text-delta")
@@ -95,3 +97,28 @@ def test_status_says_whether_the_gpu_is_on():
         got = client.get("/api/status").json()
         assert got["gpu"]["llm"]["available"] is False
         assert got["sources"]["profile"] > 10
+
+
+def test_the_quick_answer_reads_the_visitors_page_in_its_language():
+    site = [Section("Altyapı › Neler var", "Linux ve konteynerler.", "https://berkmonder.com/learn/altyapi/")]
+    state.site = SearchIndex(site)
+    try:
+        with TestClient(app) as client:
+            headers = {"x-turquoise-page": "/learn/altyapi/", "x-forwarded-for": "198.51.100.3"}
+            response = client.post("/api/chat", json=ask("Bu sayfayı özetle"), headers=headers)
+        got = chunks(response.text)
+        calls = {c["toolName"] for c in got if c["type"] == "tool-input-available"}
+        assert "read_page" in calls
+        text = "".join(c["delta"] for c in got if c["type"] == "text-delta")
+        assert "hızlı bir cevap" in text and "Linux ve konteynerler." in text
+    finally:
+        state.site = None
+
+
+def test_the_page_header_is_only_a_path():
+    def page(value: str) -> str | None:
+        return main.page_of(Request({"type": "http", "headers": [(b"x-turquoise-page", value.encode())]}))
+
+    assert page("/learn/llm/?x=1#top") == "/learn/llm/"
+    assert page("https://evil.example/") is None
+    assert page("//evil.example/") is None

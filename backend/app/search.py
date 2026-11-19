@@ -125,23 +125,48 @@ def timed(index: SearchIndex | None, query: str, k: int = 3) -> tuple[list[Secti
 
 
 REASONS = {
-    "gpu_offline": "Berk's GPU is off right now (the PC is off, or busy with something else)",
-    "busy": "every GPU slot is taken at the moment",
-    "daily_limit": "today's GPU budget is used up",
-    "gpu_error": "the model on Berk's GPU didn't answer",
-    "not_configured": "the model isn't connected here",
+    "en": {
+        "gpu_offline": "Berk's GPU is off right now (the PC is off, or busy with something else)",
+        "busy": "every GPU slot is taken at the moment",
+        "daily_limit": "today's GPU budget is used up",
+        "gpu_error": "the model on Berk's GPU didn't answer",
+        "not_configured": "the model isn't connected here",
+    },
+    "tr": {
+        "gpu_offline": "Berk'in GPU'su şu an kapalı (bilgisayar kapalı ya da başka bir işle meşgul)",
+        "busy": "şu an GPU'daki bütün yerler dolu",
+        "daily_limit": "bugünkü GPU kotası doldu",
+        "gpu_error": "Berk'in GPU'sundaki model cevap vermedi",
+        "not_configured": "model buraya bağlı değil",
+    },
+}
+WORDS = {
+    "en": {
+        "unavailable": "the model isn't available",
+        "nothing": "I couldn't find that ({why}, so I can only search this website and Berk's CV). Try other "
+        "words, or write to Berk: berkmonder@gmail.com.",
+        "quick": "{why}, so this is a quick answer: what this website and Berk's CV say.",
+        "page": "page",
+    },
+    "tr": {
+        "unavailable": "model şu an kullanılamıyor",
+        "nothing": "Bunu bulamadım ({why}; bu yüzden yalnızca bu sitede ve Berk'in özgeçmişinde "
+        "arayabiliyorum). Başka kelimelerle deneyin ya da Berk'e yazın: berkmonder@gmail.com.",
+        "quick": "{why}; bu yüzden bu hızlı bir cevap: bu sitenin ve Berk'in özgeçmişinin söyledikleri.",
+        "page": "sayfa",
+    },
 }
 
 
-def quick_answer(found: list[Section], reason: str) -> str:
-    """The answer without a language model: what search found, as it is, and why."""
-    why = REASONS.get(reason, "the model isn't available")
+def quick_answer(found: list[Section], reason: str, lang: str = "en") -> str:
+    """The answer without a language model: what was found, as it is, and why (in English or Turkish)."""
+    words = WORDS.get(lang, WORDS["en"])
+    why = REASONS.get(lang, REASONS["en"]).get(reason, words["unavailable"])
     if not found:
-        return (f"I couldn't find that ({why}, so I can only search Berk's CV and website). Try other "
-                "words, or write to Berk: berkmonder@gmail.com.")
-    parts = [f"{why[0].upper()}{why[1:]}, so this is a quick answer: what Berk's CV and website say."]
+        return words["nothing"].format(why=why)
+    parts = [words["quick"].format(why=f"{why[0].upper()}{why[1:]}")]
     for section in found:
         quoted = "\n".join(f"> {line}" if line else ">" for line in section.text.splitlines())
-        source = f" ([page]({section.url}))" if section.url else ""
+        source = f" ([{words['page']}]({section.url}))" if section.url else ""
         parts.append(f"**{section.title}**{source}\n{quoted}")
     return "\n\n".join(parts)

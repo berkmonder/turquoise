@@ -1,12 +1,13 @@
 # Turquoise
 
-**Berk's assistant:** an agent that answers questions about Berk's work, services and experience, on
+**The assistant on Berk's website:** an agent that answers questions about the page you're reading, the
+lessons and posts there, and Berk, on
 [berkmonder.com](https://berkmonder.com) (the chat in the corner of every page, and full-size at
 [berkmonder.com/turquoise](https://berkmonder.com/turquoise/)).
 
-- **An agent with tools and RAG.** Built with [Pydantic AI](https://ai.pydantic.dev). It searches Berk's
-  CV (`search_profile`) and the website itself (`search_site`), checks what's up (`get_status`), and
-  answers only from what it found.
+- **An agent with tools and RAG.** Built with [Pydantic AI](https://ai.pydantic.dev). It knows which page
+  you're on and can read it (`read_page`), searches the website (`search_site`) and Berk's CV
+  (`search_profile`), checks what's up (`get_status`), and answers from what it found.
 - **It shows its work.** The chat streams every step: the model's thinking, each tool call with what came
   back, then the answer. Thinking and tool calls are collapsed lines you can open, as in a coding agent.
 - **On Berk's own GPU.** The model (Qwen3.5 9B) runs on Berk's PC behind LiteLLM, which traces every call
@@ -47,7 +48,14 @@ sees both); the chat shows it like the others (give it labels in `frontend/src/P
 
 That's the bottom-right button. A `<div data-turquoise-inline></div>` on the page shows the chat there
 instead, and any link to `#ask` opens the button's chat. It takes its colors and fonts from the page
-(Starlight's variables), and calls `/api` on the page's own domain.
+(Starlight's variables), its language from `<html lang>` (Turkish or English), and calls `/api` on the
+page's own domain, saying which page it's on (`X-Turquoise-Page`). A page can set the button's label and
+the suggested questions:
+
+```html
+<meta name="turquoise:label" content="Ask about Berk">
+<meta name="turquoise:suggestions" content="First question|Second question|Third question">
+```
 
 ## Deploy
 

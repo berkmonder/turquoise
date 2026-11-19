@@ -14,7 +14,7 @@ from pydantic_ai.ui.vercel_ai import VercelAIAdapter
 from pydantic_ai.usage import UsageLimits
 
 from . import gpu, site
-from .agent import agent, gpu_model, quick_model
+from .agent import Visit, agent, gpu_model, quick_model
 from .config import settings
 from .limits import visitor
 from .queue import QueueFull
@@ -40,6 +40,12 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
 
 app = FastAPI(title="Turquoise", version="3.0.0", lifespan=lifespan,
               docs_url="/api/docs", redoc_url=None, openapi_url="/api/openapi.json")
+
+
+def page_of(request: Request) -> str | None:
+    """The page the visitor is on, as the chat says it (X-Turquoise-Page: its path, e.g. /learn/llm/)."""
+    page = request.headers.get("x-turquoise-page", "").split("?")[0].split("#")[0]
+    return page if page.startswith("/") and not page.startswith("//") and len(page) <= 300 else None
 
 
 def check(body: dict) -> None:
@@ -79,11 +85,12 @@ async def chat(request: Request) -> Response:
     except (ValueError, AttributeError) as error:
         raise HTTPException(422, "Not a chat request.") from error
 
+    page = page_of(request)
     reason = await gpu_turn()
-    model = gpu_model() if reason is None else quick_model(reason)
+    model = gpu_model(page) if reason is None else quick_model(reason, page)
     try:
         response = await VercelAIAdapter.dispatch_request(
-            request, agent=agent, model=model, sdk_version=7,
+            request, agent=agent, model=model, deps=Visit(page), sdk_version=7,
             usage_limits=UsageLimits(request_limit=settings.agent_max_requests))
     except BaseException:
         if reason is None:
