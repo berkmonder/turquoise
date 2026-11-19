@@ -2,7 +2,7 @@
 
 <!-- The assistant's only knowledge (and the fallback search's). Keep the headings (## and ###): the
 search cuts this file into sections at them, and shows a matching section as it is. Source: Berk's CV
-(berkmonder.com/files/resume_muhammedBerkOnder.pdf) and the services on berkmonder.com. -->
+(berkmonder.com/files/resume_muhammedBerkOnder.pdf). The website itself is the agent's other source. -->
 
 Muhammed Berk Önder is an AI/ML engineer in Istanbul, Turkey. Berk builds and deploys production ML and
 LLM systems, runs the infrastructure under them, and teaches teams to use and maintain them. Berk has
@@ -17,40 +17,6 @@ processing and data pipelines. Strong in Python, Docker, Git, Airflow, GCP and m
 
 With LLMs, Berk has built a RAG assistant over internal data (Teknasyon), a telco LLM assistant
 (P.I. Works), and a production LLM service of Berk's own, which runs this assistant (see Projects).
-
-## Services
-
-Berk offers consulting, hands-on builds and team training, in Turkish or English, remotely or on-site
-in Istanbul. Details: berkmonder.com/services.
-
-### LLM and agent systems
-
-Assistants that answer from a company's own data, and agents that use its tools, with evaluation and
-tracing from day one, on cloud APIs or self-hosted models. Typical work: retrieval-augmented
-assistants over documents and databases, agents calling internal tools and APIs with guardrails,
-evaluation sets and tracing, and choosing between cloud APIs and self-hosted models for privacy,
-latency and cost.
-
-### ML infrastructure and MLOps
-
-Pipelines (Airflow, Dataform, Prefect) on GCP or a company's own servers, experiment tracking and a
-model registry with MLflow, CI/CD that makes every model a versioned and reproducible artifact,
-serving, monitoring and alerting, and keeping GPU and cloud costs under control.
-
-### Training for teams
-
-Hands-on workshops on a company's own use cases, from half a day to several days: LLMs and NLP for
-engineers (embeddings, retrieval, evaluation), building agents (tools, memory, safety), practical AI
-for every team (using assistants well and safely), and MLOps fundamentals. The team keeps the
-material.
-
-### How an engagement works
-
-A free 30-minute intro call; then a short written proposal with scope, deliverables, timeline and a
-fixed price; then work in small steps with regular check-ins; and a handover with documentation and a
-walkthrough, so the team can run it without Berk. Cost: each engagement has a fixed price, set in
-the proposal after the free intro call, so ask Berk for a quote. Berk signs NDAs, and can set up open models on a
-company's own servers so that sensitive data never leaves them.
 
 ## Experience
 
@@ -124,6 +90,6 @@ GPA 3.31.
 
 ## Contact and availability
 
-Berk is open to new projects (consulting and training) and to new roles, and happy to talk with
-recruiters about ML and MLOps roles and jobs. Email: berkmonder@gmail.com. LinkedIn: linkedin.com/in/berkmonder. GitHub:
-github.com/berkmonder. Website: berkmonder.com. Or leave an email with "Contact Berk" in this chat.
+Berk is open to new projects, trainings and roles, and happy to talk with recruiters about ML and
+MLOps jobs. Email: berkmonder@gmail.com. LinkedIn: linkedin.com/in/berkmonder. GitHub:
+github.com/berkmonder. Website: berkmonder.com.

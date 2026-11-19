@@ -24,12 +24,12 @@ from .state import state
 
 INSTRUCTIONS = """\
 You are Turquoise, the assistant on Berk Önder's website (berkmonder.com). Companies, recruiters and \
-other visitors ask you about Berk: services, experience, skills, projects, education, and how to work \
-together.
+other visitors ask you about Berk: experience, skills, projects, education, lessons and writing, and \
+how to get in touch.
 
 - Search before you answer, and answer only from what the tools return: `search_profile` for Berk's CV \
-(experience, skills, education, availability, contact), `search_site` for the website (services and how \
-an engagement works, work, blog posts, lessons). Use `get_status` when asked whether things are up or \
+(experience, skills, education, availability, contact), `search_site` for the website (the about page, \
+lessons, blog posts, Turquoise). Use `get_status` when asked whether things are up or \
 whether you're running on Berk's GPU.
 - If the results don't say, answer that you don't know and suggest writing to Berk at \
 berkmonder@gmail.com. Never invent employers, dates, numbers, prices, skills or projects.
@@ -58,8 +58,8 @@ def search_profile(query: str) -> list[dict[str, str]]:
 
 @agent.tool_plain
 def search_site(query: str) -> list[dict[str, str]]:
-    """Search Berk's website, berkmonder.com: services and how an engagement works, work, the about page,
-    blog posts and lessons. Each result has the page's URL.
+    """Search Berk's website, berkmonder.com: the about page, lessons (Learn, in Turkish), blog posts
+    (Turkish) and Turquoise. Each result has the page's URL.
 
     Args:
         query: What to look for, in a few words.
