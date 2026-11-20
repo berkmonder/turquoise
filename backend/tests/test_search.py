@@ -1,8 +1,6 @@
-from pathlib import Path
-
 from app.search import SearchIndex, Section, quick_answer, sections
 
-CV = (Path(__file__).parent.parent / "profile" / "cv.md").read_text()
+from .conftest import CV
 
 
 def test_sections_follow_headings():
@@ -18,9 +16,9 @@ def test_words_find_the_right_section():
 
 def test_questions_land_on_their_section():
     index = SearchIndex(sections(CV))
-    assert index.search("where did berk study")[0].title == "Education"
-    assert index.search("is berk open to new roles")[0].title == "Contact and availability"
-    assert index.search("what has berk built with LLMs")[0].title == "Summary"
+    assert index.search("which university did berk attend")[0].title.startswith("Education ›")
+    assert index.search("what did berk do at teknasyon")[0].title.startswith("Experience › MLOps Engineer")
+    assert index.search("tell me about turquoise")[0].title.startswith("Projects › Turquoise")
 
 
 def test_nothing_relevant_finds_nothing():

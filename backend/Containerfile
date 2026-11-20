@@ -18,7 +18,6 @@ RUN uv sync --frozen --no-dev --no-install-project
 RUN python -c "from fastembed import TextEmbedding; TextEmbedding('BAAI/bge-small-en-v1.5')"
 
 COPY app ./app
-COPY profile ./profile
 
 EXPOSE 8000
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

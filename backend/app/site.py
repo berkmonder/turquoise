@@ -1,5 +1,7 @@
-"""The website as the agent's second source: berkmonder.com's pages (listed in its sitemap), each cut into
-sections at its headings. Re-read every hour, so a new page or blog post is searchable without a deploy."""
+"""The website as the agent's sources: Berk's CV, the Markdown the site serves at /files/cv.md (in the
+site's repository: cv/cv.md, also built into the PDF), and berkmonder.com's pages (listed in its sitemap),
+each cut into sections at its headings. Re-read every hour, so a CV change, a new page or a blog post is
+searchable without a deploy."""
 
 import asyncio
 import logging
@@ -103,11 +105,24 @@ async def build_index(client: httpx.AsyncClient, site: str) -> SearchIndex:
     return SearchIndex([s for page in pages for s in page], settings.embedding_model or None)
 
 
+async def read_cv(client: httpx.AsyncClient, site: str) -> SearchIndex:
+    """Berk's CV, cut into sections at its `##`/`###` headings."""
+    response = await client.get(f"{site}/files/cv.md", timeout=10)
+    response.raise_for_status()
+    return SearchIndex(sections(response.text), settings.embedding_model or None)
+
+
 async def keep_fresh() -> None:
-    """Read the site now and every hour; a failed read keeps the last index."""
+    """Read the CV and the site now and every hour; a failed read keeps the last index."""
+    site = settings.site_url.rstrip("/")
     while True:
         try:
-            state.site = await build_index(state.client, settings.site_url.rstrip("/"))
+            state.profile = await read_cv(state.client, site)
+            log.info("cv: %d sections", len(state.profile.sections))
+        except httpx.HTTPError as error:
+            log.warning("cv: not read (%s), keeping the last one", error)
+        try:
+            state.site = await build_index(state.client, site)
             log.info("website: %d sections", len(state.site.sections))
         except httpx.HTTPError as error:
             log.warning("website: not read (%s), keeping the last index", error)

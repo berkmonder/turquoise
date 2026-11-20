@@ -44,7 +44,9 @@ flowchart LR
 - `read_page()`: the page the visitor is on. The chat sends its path with every question
   (`X-Turquoise-Page`); the agent is told which page it is, and this tool returns that page's sections from
   the website's index. It's how "summarize this page" works.
-- `search_profile(query)`: Berk's CV (`backend/profile/cv.md`), cut into sections at its headings.
+- `search_profile(query)`: Berk's CV, cut into sections at its headings. It's the Markdown the website
+  serves at `/files/cv.md` (berkmonder.com's `cv/cv.md`, which its image also builds into the PDF), read
+  with the pages at startup and every hour, so a CV change is in the chat without a deploy here.
 - `search_site(query)`: berkmonder.com. `app/site.py` reads the sitemap at startup and every hour,
   takes each page's main text and cuts it at its headings, so a new page or blog post is searchable
   without a deploy. Results carry the page's URL, and answers link to it.

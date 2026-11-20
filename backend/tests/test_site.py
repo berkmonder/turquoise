@@ -1,4 +1,9 @@
-from app.site import SKIP, page_sections
+import httpx
+import pytest
+
+from app.site import SKIP, page_sections, read_cv
+
+from .conftest import CV
 
 PAGE = """<html><body><header><nav><a href="/">Home</a></nav></header>
 <main><div class="content-panel"><h1 id="_top">Services</h1></div>
@@ -30,3 +35,16 @@ def test_pages_that_arent_content_are_skipped():
 def test_the_home_page_is_called_home():
     html = "<main><h1>AI systems that work in production</h1><p>Hi.</p></main>"
     assert page_sections(html, "https://berkmonder.com/")[0].title == "Home"
+
+
+async def test_the_cv_is_read_from_the_site():
+    def site(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/files/cv.md":
+            return httpx.Response(200, text=CV)
+        return httpx.Response(404)
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(site)) as client:
+        found = await read_cv(client, "https://berkmonder.com")
+        assert "Skills" in [s.title for s in found.sections]
+        with pytest.raises(httpx.HTTPError):  # the caller keeps the last one
+            await read_cv(client, "https://berkmonder.com/missing")
