@@ -5,7 +5,6 @@ whether Berk's GPU is on. One process: limits and the queue are in memory."""
 import asyncio
 import contextlib
 import json
-import re
 from collections.abc import AsyncIterator
 
 from fastapi import FastAPI, HTTPException, Request
@@ -18,17 +17,13 @@ from .agent import Visit, agent, gpu_model, quick_model
 from .config import settings
 from .limits import visitor
 from .queue import QueueFull
-from .search import SearchIndex, sections
 from .state import state
 
 
 @contextlib.asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
-    # Without HTML comments: the file's own notes aren't part of the profile.
-    profile = re.sub(r"<!--.*?-->", "", settings.profile_path.read_text(encoding="utf-8"), flags=re.S)
-    state.profile = SearchIndex(sections(profile), settings.embedding_model or None)
     tasks = [asyncio.create_task(gpu.watch([state.llm]))]
-    if settings.site_url:
+    if settings.site_url:  # the CV and the pages (site.py)
         tasks.append(asyncio.create_task(site.keep_fresh()))
     try:
         yield

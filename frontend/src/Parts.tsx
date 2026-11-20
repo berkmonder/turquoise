@@ -2,13 +2,31 @@
 // (what it thought, what it read or searched for and what came back); the answer itself is markdown.
 
 import type { DynamicToolUIPart, ReasoningUIPart, UIMessage } from "ai";
-import Markdown from "react-markdown";
+import type { ReactNode } from "react";
+import Markdown, { type Components } from "react-markdown";
 import { PulseIcon, SearchIcon, ThinkIcon } from "./icons";
 import type { Words } from "./page";
 
 type Found = { title: string; text: string; url?: string };
 type Status = { gpu: string; sites: { name: string; status: string; uptime_30_days: string }[] | string };
 
+
+/** A link: to another site in a new tab, so the visitor's page stays open; to this site's pages in the same tab. */
+function Link({ href, className, children }: { href?: string; className?: string; children: ReactNode }) {
+  let outside = false;
+  try {
+    const url = new URL(href ?? "", location.href);
+    outside = url.protocol.startsWith("http") && url.origin !== location.origin;
+  } catch {}
+  return (
+    <a href={href} className={className} {...(outside && { target: "_blank", rel: "noopener" })}>
+      {children}
+    </a>
+  );
+}
+
+/** The answer's links, the same way. */
+const answer: Components = { a: ({ href, children }) => <Link href={href}>{children}</Link> };
 
 /** A tool call, whichever way the stream labelled it (`tool-<name>` or `dynamic-tool`). */
 type ToolPart = Pick<DynamicToolUIPart, "toolCallId" | "state" | "input" | "output" | "errorText"> & {
@@ -60,9 +78,9 @@ function Tool({ part, words }: { part: ToolPart; words: Words }) {
             <h4>
               {f.title}
               {f.url && (
-                <a href={f.url} className="tq-page">
+                <Link href={f.url} className="tq-page">
                   {words.page} ↗
-                </a>
+                </Link>
               )}
             </h4>
             <p>{f.text}</p>
@@ -101,7 +119,7 @@ export default function Parts({ message, thoughts, words }: { message: UIMessage
         if (part.type === "text") {
           return (
             <div key={i} className="tq-text">
-              <Markdown>{part.text}</Markdown>
+              <Markdown components={answer}>{part.text}</Markdown>
             </div>
           );
         }

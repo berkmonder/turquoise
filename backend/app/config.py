@@ -1,8 +1,6 @@
 """Settings, from the environment (on the VPS: hosts/vps/apps.nix and the turquoise-env secret, both in
 nix-dotfiles)."""
 
-from pathlib import Path
-
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -15,9 +13,9 @@ class Settings(BaseSettings):
     llm_key: str = ""
     llm_model: str = "default"  # the PC's chat model, by the name that stays when the model changes
 
-    # What the agent searches: Berk's CV, and the website's pages (from its sitemap, re-read hourly).
-    profile_path: Path = Path(__file__).resolve().parent.parent / "profile" / "cv.md"
-    site_url: str = "https://berkmonder.com"  # empty: no website search
+    # What the agent searches, both from the website and re-read hourly: Berk's CV (/files/cv.md) and the
+    # pages (from its sitemap). A local copy of the site works too, e.g. http://localhost:4321.
+    site_url: str = "https://berkmonder.com"  # empty: nothing to search
     site_refresh_s: int = 3600
     embedding_model: str = "BAAI/bge-small-en-v1.5"  # empty: search by words only
 

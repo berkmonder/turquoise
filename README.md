@@ -22,7 +22,7 @@ How it's built and why: [docs/architecture.md](docs/architecture.md).
 | `backend/app/agent.py` | the agent: its instructions, tools and models (the GPU, and the quick-answer stand-in) |
 | `backend/app/main.py` | the API: `POST /api/chat` (limits, the GPU queue, then the agent's stream), `GET /api/status` |
 | `backend/app/search.py`, `site.py` | the RAG: sections of the CV and of the website's pages, searched by words and meaning |
-| `backend/profile/cv.md` | **Berk's CV**, one of the agent's two sources. Keep its `##`/`###` headings: search cuts it there |
+| `backend/tests/cv.md` | a copy of Berk's CV for the tests. The real one is the website's (`cv/cv.md` in berkmonder.com, served at `/files/cv.md`); turquoise reads it every hour |
 | `frontend/src/` | the chat (React, the Vercel AI SDK's `useChat`), built into one script: `/widget/turquoise.js` |
 | `.github/workflows/` | `api.yml` and `web.yml`: checks, then on `main` build, smoke-test and publish the images |
 
