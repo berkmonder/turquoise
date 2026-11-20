@@ -1,5 +1,5 @@
-"""Tests run without the GPU, the website or the embedding model: settings come from here, before the
-app is imported. Berk's CV comes from tests/cv.md, a copy of the one the site serves."""
+"""Tests run without the GPU, the website, the embedding model or MLflow: settings come from here, before
+the app is imported. Berk's CV comes from tests/cv.md, a copy of the one the site serves."""
 
 import os
 from pathlib import Path
@@ -9,6 +9,7 @@ import pytest
 os.environ["LLM_URL"] = ""
 os.environ["SITE_URL"] = ""
 os.environ["EMBEDDING_MODEL"] = ""
+os.environ["MLFLOW_TRACKING_URI"] = ""  # no tracing (tracing.py)
 
 CV = (Path(__file__).parent / "cv.md").read_text()
 

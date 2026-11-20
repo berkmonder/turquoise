@@ -8,8 +8,10 @@ questions about the page you're on, the site's lessons and posts, and me.
   you're on, searches the site and my CV, checks what's up, and answers from what it found.
 - **It shows its work.** The chat streams every step: the model's thinking, each tool call with what came
   back, then the answer. Thinking and tool calls are collapsed lines you can open, as in a coding agent.
-- **On my own GPU.** The model (Qwen3.5 9B) runs on my PC behind LiteLLM, which traces every call in
-  MLflow. When the PC is off or busy, the same agent gives quick answers from search alone, and says so.
+- **On my own GPU.** The model (Qwen3.5 9B) runs on my PC behind LiteLLM. When the PC is off or busy,
+  the same agent gives quick answers from search alone, and says so.
+- **Every answer is a trace in MLflow** on my PC: each step and tool call, the conversation it belongs to,
+  the prompt's version and the build that answered. Where to look: [In MLflow](#in-mlflow).
 
 ## How it works
 
@@ -40,6 +42,7 @@ flowchart LR
   api -- "tools" --> rag
   api -- "GPU on" --> litellm --> llama
   litellm --> mlflow
+  api -. "a trace of each answer" .-> mlflow
 ```
 
 **One answer:**
@@ -89,8 +92,30 @@ mid-answer, a `FallbackModel` hands over to the stand-in.
 | per answer | 6 model calls, tool rounds included |
 | per message | 800 characters, and 24 messages of history |
 
-Nothing is stored on the VPS. LiteLLM's traces in MLflow, on the PC, are the record of what the model was
-asked and what it said.
+Nothing is stored on the VPS. MLflow, on the PC, keeps the record twice: turquoise's own trace of each
+answer (`app/tracing.py`, below), and LiteLLM's trace of each model call.
+
+## In MLflow
+
+http://blackmesa:5000 (my devices, over Tailscale), experiment **`turquoise`**. `app/tracing.py` connects
+when MLflow answers, then:
+
+| MLflow's page | What turquoise puts there |
+|---|---|
+| **Traces** | one per answer: the agent's run, each model call (with its thinking and tokens), each tool call with what it returned. Tags: `answer` (`gpu`, or why it was a quick answer) and `page` |
+| **Sessions** | the conversation: the chat's id (`useChat` makes one per conversation). Nothing identifies the visitor |
+| **Prompts** | `turquoise-instructions`: `INSTRUCTIONS` from `agent.py`, a new version whenever they change (registered at startup; git stays where they're written) |
+| **Agent versions** | `turquoise-<commit>`: each build, linked to its prompt version; every trace says which build answered |
+
+With the PC off, nothing is sent and the chat doesn't wait. Answers given because the PC is off aren't
+traced (nowhere to send them); a trace that fails on the way is dropped.
+
+To improve an answer, use **Evaluation**:
+
+- **Judges** score traces against instructions you write, also on every new one. Example: "answers in
+  the visitor's language", "only says what the tool results say".
+- **Review** and **Datasets:** mark good and bad answers, and gather questions into a dataset.
+- **Evaluation runs:** run a dataset against a changed prompt, then compare the two runs.
 
 ## The files
 
@@ -100,6 +125,7 @@ asked and what it said.
 | `backend/app/main.py` | the API: `POST /api/chat` (limits, the GPU queue, then the agent's stream), `GET /api/status`, `GET /api/health` |
 | `backend/app/config.py` | every setting and limit, read from the environment |
 | `backend/app/search.py`, `site.py` | the RAG: reading the site and the CV, cutting them into sections, searching them |
+| `backend/app/tracing.py` | the traces in MLflow: connecting when the PC answers, the prompt's versions, the build, each answer's session and tags |
 | `backend/app/gpu.py`, `queue.py`, `limits.py`, `state.py` | is the GPU there; the GPU queue; per-visitor limits; the shared state |
 | `backend/tests/` | pytest; `cv.md` is a copy of my CV used only by the tests |
 | `frontend/src/` | the chat (React and the AI SDK's `useChat`), built into one script: `/widget/turquoise.js`. `page.ts` holds its words in both languages, including each tool's label |
@@ -114,6 +140,8 @@ asked and what it said.
 | `LLM_KEY` | empty | turquoise's key at LiteLLM: the secret `turquoise-env` (nix-dotfiles `hosts/vps/secrets.yaml`; the same key is `litellm-key-turquoise` in `hosts/desktop/secrets.yaml`) |
 | `LLM_MODEL` | `default` | the default: LiteLLM's alias for whichever model the PC serves |
 | `SITE_URL` | `https://berkmonder.com` | the default. Locally, `http://localhost:4321` searches a local copy of the site |
+| `MLFLOW_TRACKING_URI` | empty: no traces | `http://100.76.197.63:5000`, the PC's MLflow (nix-dotfiles `hosts/vps/apps.nix`) |
+| `GIT_COMMIT` | `dev` | the image's commit (CI passes it): the agent version's name |
 
 The limits are settings too (`backend/app/config.py`): `GPU_CHATS_PER_DAY=200`, for example.
 
@@ -136,7 +164,7 @@ cd frontend && npm run build
 
 | To… | Do this |
 |---|---|
-| change what it says, or how | `INSTRUCTIONS` in `backend/app/agent.py` |
+| change what it says, or how | `INSTRUCTIONS` in `backend/app/agent.py`. After the deploy, MLflow shows it as the prompt's next version, so you can compare answers before and after |
 | add a tool | a typed function with a docstring in `agent.py`, under `@agent.tool_plain` (the model sees both). Give it labels in `frontend/src/page.ts` (`tools`), in both languages |
 | change a limit | its setting in `backend/app/config.py`, or an environment variable on the VPS |
 | change what it knows about me | `cv/cv.md` in berkmonder.com: turquoise reads it within the hour |

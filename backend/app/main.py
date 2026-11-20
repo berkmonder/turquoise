@@ -12,7 +12,7 @@ from fastapi.responses import Response, StreamingResponse
 from pydantic_ai.ui.vercel_ai import VercelAIAdapter
 from pydantic_ai.usage import UsageLimits
 
-from . import gpu, site
+from . import gpu, site, tracing
 from .agent import Visit, agent, gpu_model, quick_model
 from .config import settings
 from .limits import visitor
@@ -25,6 +25,8 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     tasks = [asyncio.create_task(gpu.watch([state.llm]))]
     if settings.site_url:  # the CV and the pages (site.py)
         tasks.append(asyncio.create_task(site.keep_fresh()))
+    if settings.mlflow_tracking_uri:  # traces in MLflow, once the PC answers (tracing.py)
+        tasks.append(asyncio.create_task(tracing.keep_trying()))
     try:
         yield
     finally:
@@ -76,10 +78,12 @@ async def chat(request: Request) -> Response:
         raise HTTPException(429, "Too many messages: try again in a few minutes.",
                             headers={"Retry-After": str(state.chat_limit.retry_after(who))})
     try:
-        check(json.loads(await request.body()))
+        body = json.loads(await request.body())
+        check(body)
     except (ValueError, AttributeError) as error:
         raise HTTPException(422, "Not a chat request.") from error
 
+    chat_id = body.get("id") if isinstance(body.get("id"), str) and len(body["id"]) <= 100 else None
     page = page_of(request)
     reason = await gpu_turn()
     model = gpu_model(page) if reason is None else quick_model(reason, page)
@@ -91,17 +95,19 @@ async def chat(request: Request) -> Response:
         if reason is None:
             state.queue.release()
         raise
-    if reason is None and isinstance(response, StreamingResponse):
+    if isinstance(response, StreamingResponse):
         inner = response.body_iterator
 
-        async def holding_the_slot() -> AsyncIterator[str | bytes | memoryview]:
+        async def streamed() -> AsyncIterator[str | bytes | memoryview]:
             try:
-                async for chunk in inner:
-                    yield chunk
+                with tracing.answer(chat_id, page, reason or "gpu"):  # the agent runs as it streams
+                    async for chunk in inner:
+                        yield chunk
             finally:  # also when the visitor leaves mid-answer
-                state.queue.release()
+                if reason is None:
+                    state.queue.release()
 
-        response.body_iterator = holding_the_slot()
+        response.body_iterator = streamed()
     elif reason is None:
         state.queue.release()
     return response

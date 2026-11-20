@@ -19,5 +19,9 @@ RUN python -c "from fastembed import TextEmbedding; TextEmbedding('BAAI/bge-smal
 
 COPY app ./app
 
+# This build's commit (CI passes it): MLflow's agent version, turquoise-<commit>.
+ARG GIT_COMMIT=dev
+ENV GIT_COMMIT=$GIT_COMMIT
+
 EXPOSE 8000
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
