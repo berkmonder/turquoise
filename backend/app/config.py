@@ -19,6 +19,10 @@ class Settings(BaseSettings):
     site_refresh_s: int = 3600
     embedding_model: str = "BAAI/bge-small-en-v1.5"  # empty: search by words only
 
+    # A trace of every answer, in MLflow on Berk's PC (tracing.py), over Tailscale. Empty: no tracing.
+    mlflow_tracking_uri: str = ""  # e.g. http://100.76.197.63:5000
+    git_commit: str = "dev"  # this build (the image sets it): MLflow's agent version
+
     # Limits for the public: one visitor, everyone together, one answer.
     gpu_concurrency: int = 3  # the engine has 4 slots: one stays free for Berk
     queue_max: int = 12

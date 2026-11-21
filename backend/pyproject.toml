@@ -12,6 +12,7 @@ dependencies = [
   "rank-bm25>=0.2.2",
   "fastembed>=0.4",
   "pydantic-ai-slim[openai]==2.64.0",
+  "mlflow-skinny==3.17.2",
 ]
 
 [dependency-groups]
